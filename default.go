@@ -8,9 +8,7 @@
 package belog
 
 // 初始化一个默认实例(控制台引擎记录日志)
-var belogDefault = New().
-	SetEngine(EngineConsole).
-	SetLevel(LevelTrace, LevelDebug, LevelInfo, LevelWarn, LevelError, LevelFatal).
+var belogDefault = New(EngineConsole, nil).
 	OpenFileLine().
 	SetSkip(1) // 因为又封装了一层，故需要跳过一层函数栈
 

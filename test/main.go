@@ -13,8 +13,7 @@ func main() {
 
 	// 通过实例方式
 	// 初始化一个实例(控制台引擎记录日志)
-	var mylog = belog.New().
-		SetEngine(belog.EngineConsole).
+	var mylog = belog.New(belog.EngineConsole, 10).
 		SetLevel(belog.LevelTrace, belog.LevelDebug, belog.LevelInfo, belog.LevelWarn, belog.LevelError, belog.LevelFatal).
 		OpenFileLine()
 	mylog.Trace("this is a trace log")

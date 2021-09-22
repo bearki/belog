@@ -12,11 +12,21 @@ import (
 	"sync"
 )
 
+// consoleEngine 控制台引擎
+type consoleEngine struct {
+}
+
 // consolePrintLock 控制台打印锁
 var consolePrintLock sync.Mutex
 
+// initConsoleEngine 初始化控制台引擎
+func initConsoleEngine(optin interface{}) *consoleEngine {
+	consolelog := new(consoleEngine)
+	return consolelog
+}
+
 // printConsoleLog 打印控制台日志
-func printConsoleLog(logStr string) {
+func (consolelog *consoleEngine) printConsoleLog(logStr string) {
 	// 加锁
 	consolePrintLock.Lock()
 	// 解锁

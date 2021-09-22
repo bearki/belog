@@ -39,11 +39,7 @@ type printFuncEngine func(logStr string)
 
 // beLog 记录器对象
 type beLog struct {
-	logPath    string                          // 日志文件保存路径
-	isSplitDay bool                            // 是否开启按日分割
 	isFileLine bool                            // 是否开启文件行号记录
-	maxSize    uint16                          // 单文件最大容量（单位：byte）
-	saveDay    uint16                          // 日志保存天数
 	skip       uint                            // 需要向上捕获的函数栈层数（该值会自动加2，以便于实例化用户可直接使用）【0-runtime.Caller函数的执行位置（在belog包内），1-Belog各级别方法实现位置（在belog包内），2-belog实例调用各级别日志函数位置，依次类推】
 	engine     map[belogEngine]printFuncEngine // 输出引擎方法类型映射
 	level      map[belogLevel]belogLevelChar   // 需要记录的日志级别字符映射
@@ -54,12 +50,6 @@ var (
 	EngineConsole belogEngine = 1 // 控制台引擎
 	EngineFile    belogEngine = 2 // 文件引擎
 )
-
-// 日志引擎映射
-var engineMap = map[belogEngine]printFuncEngine{
-	EngineConsole: printConsoleLog, // 控制台输出方法映射
-	EngineFile:    printFileLog,    // 文件输出方法映射
-}
 
 // 日志保存级别定义
 var (
@@ -82,47 +72,48 @@ var levelMap = map[belogLevel]belogLevelChar{
 }
 
 // New 初始化一个日志记录器实例
-// @params engine      belogEngine    必选的日志引擎
-// @params otherEngine ...belogEngine 其他日志引擎
-// @params logPath string 日志文件保存地址(可选)
-// @return         *beLog 日志记录器实例指针
-// @return         error  初始化时发生的错误信息
-func New() *beLog {
-	// if len(logPath) > 0 {
-	// 	// 判断是文件路径还是文件夹路径
-	// 	filePath, err := os.Stat(logPath[0])
-	// 	if err != nil {
-	// 		fmt.Printf("beLog: %s\n", err.Error())
-	// 		return nil
-	// 	}
-	// 	if filePath.IsDir() {
-	// 		fmt.Printf("beLog: %s is dir, `logPath` it should be a file\n", logPath[0])
-	// 		return nil
-	// 	}
-	// }
-
+// @params engine belogEngine 必选的基础日志引擎
+// @params option interface{} 引擎的配置参数
+// @return        *beLog      日志记录器实例指针
+// @return        error       初始化时发生的错误信息
+func New(engine belogEngine, option interface{}) *beLog {
 	// 初始化日志记录器对象
 	belog := new(beLog)
-	// 赋值默认值
-	belog.SetEngine(EngineConsole).
-		SetLevel(LevelTrace, LevelDebug, LevelInfo, LevelWarn, LevelError, LevelFatal).
-		SetMaxSize(100).
-		SetSaveDay(7).
-		SetSkip(0)
+	// 初始化引擎
+	belog.SetEngine(engine, option)
+	// 默认不需要跳过函数堆栈
+	belog.SetSkip(0)
+	// 默认开启全部级别的日志记录
+	belog.SetLevel(LevelTrace, LevelDebug, LevelInfo, LevelWarn, LevelError, LevelFatal)
+	// 返回日志示例指针
 	return belog
 }
 
 // SetEngine 设置日志记录引擎
 // @params val ...belogEngine 任意数量的日志记录引擎
-func (belog *beLog) SetEngine(val ...belogEngine) *beLog {
+func (belog *beLog) SetEngine(engine belogEngine, option interface{}) *beLog {
 	// 判断引擎是否为空
 	if belog.engine == nil {
 		// 初始化一下
 		belog.engine = make(map[belogEngine]printFuncEngine)
 	}
-	// 遍历输入的引擎
-	for _, item := range val {
-		belog.engine[item] = engineMap[item]
+	// 使用不同引擎进行初始化
+	switch engine {
+	case EngineFile: // 文件引擎
+		// 初始化文件引擎
+		fileEngine := initFileEngine(option)
+		// 赋值引擎输出方法映射
+		belog.engine[engine] = fileEngine.printFileLog
+	/*--------------------------可以在此之后添加更多的引擎---------------------------*/
+
+	/*--------------------------可以在此之前添加更多的引擎---------------------------*/
+	case EngineConsole: // 控制台引擎（和默认引擎一致）
+		fallthrough
+	default: // 默认引擎（和控制台引擎一致）
+		// 初始化控制台引擎
+		consolelog := initConsoleEngine(option)
+		// 赋值引擎输出方法映射
+		belog.engine[engine] = consolelog.printConsoleLog
 	}
 	return belog
 }
@@ -130,11 +121,10 @@ func (belog *beLog) SetEngine(val ...belogEngine) *beLog {
 // SetLevel 设置日志记录保存级别
 // @params val ...belogLevel 任意数量的日志记录级别
 func (belog *beLog) SetLevel(val ...belogLevel) *beLog {
-	// 判断级别映射是否为空
-	if belog.level == nil {
-		// 初始化一下
-		belog.level = make(map[belogLevel]belogLevelChar)
-	}
+	// 置空，用于覆盖后续输入的级别
+	belog.level = nil
+	// 初始化一下
+	belog.level = make(map[belogLevel]belogLevelChar)
 	// 遍历输入的级别
 	for _, item := range val {
 		belog.level[item] = levelMap[item]
@@ -142,30 +132,9 @@ func (belog *beLog) SetLevel(val ...belogLevel) *beLog {
 	return belog
 }
 
-// OpenSplitDay 开启日志文件按日分割
-func (belog *beLog) OpenSplitDay() *beLog {
-	belog.isSplitDay = true
-	return belog
-}
-
 // OpenFileLine 开启文件行号记录
 func (belog *beLog) OpenFileLine() *beLog {
 	belog.isFileLine = true
-	return belog
-}
-
-// SetMaxSize 配置单文件储存容量
-// @params maxSize uint16 单文件最大容量（单位：MB）
-func (belog *beLog) SetMaxSize(maxSize uint16) *beLog {
-	byteSize := 1024 * 1024
-	belog.maxSize = uint16(byteSize) * maxSize
-	return belog
-}
-
-// SetSaveDay 配置日志保存天数
-// @params saveDay uint16 保存天数
-func (belog *beLog) SetSaveDay(saveDay uint16) *beLog {
-	belog.saveDay = saveDay
 	return belog
 }
 
@@ -186,7 +155,7 @@ func (belog *beLog) print(logstr string, levelChar belogLevelChar) {
 		logstr = fmt.Sprintf(
 			"%s.%03d [%s] [%s:%d] %s\n",
 			currTime.Format("2006/01/02 15:04:05"),
-			currTime.UnixMilli()%currTime.Unix(),
+			(currTime.UnixNano()/1e6)%currTime.Unix(),
 			string(levelChar),
 			filepath.Base(file),
 			line,
@@ -197,7 +166,7 @@ func (belog *beLog) print(logstr string, levelChar belogLevelChar) {
 		logstr = fmt.Sprintf(
 			"%s.%03d [%s] %s\n",
 			currTime.Format("2006/01/02 15:04:05"),
-			currTime.UnixMilli()%currTime.Unix(),
+			(currTime.UnixNano()/1e6)%currTime.Unix(),
 			string(levelChar),
 			logstr,
 		)
