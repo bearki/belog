@@ -1,3 +1,3 @@
 module github.com/bearki/belog
 
-go 1.17
+go 1.10
