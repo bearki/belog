@@ -150,10 +150,11 @@ func (belog *BeLog) print(logstr string, levelChar belogLevelChar) {
 	currTime := time.Now()
 	// 是否需要打印文件行数
 	if belog.isFileLine {
+		// 捕获函数栈文件名及执行行数
 		_, file, line, _ := runtime.Caller(int(belog.skip))
 		// 格式化
 		logstr = fmt.Sprintf(
-			"%s.%03d [%s] [%s:%d] %s\n",
+			"%s.%03d [%s] [%s:%d]  %s\n",
 			currTime.Format("2006/01/02 15:04:05"),
 			(currTime.UnixNano()/1e6)%currTime.Unix(),
 			string(levelChar),
@@ -164,7 +165,7 @@ func (belog *BeLog) print(logstr string, levelChar belogLevelChar) {
 	} else {
 		// 格式化
 		logstr = fmt.Sprintf(
-			"%s.%03d [%s] %s\n",
+			"%s.%03d [%s]  %s\n",
 			currTime.Format("2006/01/02 15:04:05"),
 			(currTime.UnixNano()/1e6)%currTime.Unix(),
 			string(levelChar),
@@ -181,6 +182,7 @@ func (belog *BeLog) print(logstr string, levelChar belogLevelChar) {
 			ouput(logstr)
 		}(printFunc)
 	}
+	// 等待所有引擎完成日志记录
 	wg.Wait()
 }
 
