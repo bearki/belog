@@ -37,8 +37,8 @@ type belogLevelChar byte
 // 日志输出引擎方法类型
 type printFuncEngine func(logStr string)
 
-// beLog 记录器对象
-type beLog struct {
+// BeLog 记录器对象
+type BeLog struct {
 	isFileLine bool                            // 是否开启文件行号记录
 	skip       uint                            // 需要向上捕获的函数栈层数（该值会自动加2，以便于实例化用户可直接使用）【0-runtime.Caller函数的执行位置（在belog包内），1-Belog各级别方法实现位置（在belog包内），2-belog实例调用各级别日志函数位置，依次类推】
 	engine     map[belogEngine]printFuncEngine // 输出引擎方法类型映射
@@ -74,11 +74,11 @@ var levelMap = map[belogLevel]belogLevelChar{
 // New 初始化一个日志记录器实例
 // @params engine belogEngine 必选的基础日志引擎
 // @params option interface{} 引擎的配置参数
-// @return        *beLog      日志记录器实例指针
+// @return        *BeLog      日志记录器实例指针
 // @return        error       初始化时发生的错误信息
-func New(engine belogEngine, option interface{}) *beLog {
+func New(engine belogEngine, option interface{}) *BeLog {
 	// 初始化日志记录器对象
-	belog := new(beLog)
+	belog := new(BeLog)
 	// 初始化引擎
 	belog.SetEngine(engine, option)
 	// 默认不需要跳过函数堆栈
@@ -91,7 +91,7 @@ func New(engine belogEngine, option interface{}) *beLog {
 
 // SetEngine 设置日志记录引擎
 // @params val ...belogEngine 任意数量的日志记录引擎
-func (belog *beLog) SetEngine(engine belogEngine, option interface{}) *beLog {
+func (belog *BeLog) SetEngine(engine belogEngine, option interface{}) *BeLog {
 	// 判断引擎是否为空
 	if belog.engine == nil {
 		// 初始化一下
@@ -120,7 +120,7 @@ func (belog *beLog) SetEngine(engine belogEngine, option interface{}) *beLog {
 
 // SetLevel 设置日志记录保存级别
 // @params val ...belogLevel 任意数量的日志记录级别
-func (belog *beLog) SetLevel(val ...belogLevel) *beLog {
+func (belog *BeLog) SetLevel(val ...belogLevel) *BeLog {
 	// 置空，用于覆盖后续输入的级别
 	belog.level = nil
 	// 初始化一下
@@ -133,19 +133,19 @@ func (belog *beLog) SetLevel(val ...belogLevel) *beLog {
 }
 
 // OpenFileLine 开启文件行号记录
-func (belog *beLog) OpenFileLine() *beLog {
+func (belog *BeLog) OpenFileLine() *BeLog {
 	belog.isFileLine = true
 	return belog
 }
 
 // SetSkip 配置需要向上捕获的函数栈层数
-func (belog *beLog) SetSkip(skip uint) *beLog {
+func (belog *BeLog) SetSkip(skip uint) *BeLog {
 	belog.skip = 2 + skip
 	return belog
 }
 
 // print 日志集中打印地，日志的真实记录地
-func (belog *beLog) print(logstr string, levelChar belogLevelChar) {
+func (belog *BeLog) print(logstr string, levelChar belogLevelChar) {
 	// 统一当前时间
 	currTime := time.Now()
 	// 是否需要打印文件行数
@@ -187,7 +187,7 @@ func (belog *beLog) print(logstr string, levelChar belogLevelChar) {
 // Trace 通知级别的日志
 // @params format string         序列化格式
 // @params val    ...interface{} 待序列化内容
-func (belog *beLog) Trace(format string, val ...interface{}) {
+func (belog *BeLog) Trace(format string, val ...interface{}) {
 	// 判断当前级别日志是否需要记录
 	if _, ok := belog.level[LevelTrace]; !ok { // 当前级别日志不需要记录
 		return
@@ -200,7 +200,7 @@ func (belog *beLog) Trace(format string, val ...interface{}) {
 // Debug 调试级别的日志
 // @params format string         序列化格式
 // @params val    ...interface{} 待序列化内容
-func (belog *beLog) Debug(format string, val ...interface{}) {
+func (belog *BeLog) Debug(format string, val ...interface{}) {
 	// 判断当前级别日志是否需要记录
 	if _, ok := belog.level[LevelDebug]; !ok { // 当前级别日志不需要记录
 		return
@@ -213,7 +213,7 @@ func (belog *beLog) Debug(format string, val ...interface{}) {
 // Info 普通级别的日志
 // @params format string         序列化格式
 // @params val    ...interface{} 待序列化内容
-func (belog *beLog) Info(format string, val ...interface{}) {
+func (belog *BeLog) Info(format string, val ...interface{}) {
 	// 判断当前级别日志是否需要记录
 	if _, ok := belog.level[LevelInfo]; !ok { // 当前级别日志不需要记录
 		return
@@ -226,7 +226,7 @@ func (belog *beLog) Info(format string, val ...interface{}) {
 // Warn 警告级别的日志
 // @params format string         序列化格式
 // @params val    ...interface{} 待序列化内容
-func (belog *beLog) Warn(format string, val ...interface{}) {
+func (belog *BeLog) Warn(format string, val ...interface{}) {
 	// 判断当前级别日志是否需要记录
 	if _, ok := belog.level[LevelWarn]; !ok { // 当前级别日志不需要记录
 		return
@@ -239,7 +239,7 @@ func (belog *beLog) Warn(format string, val ...interface{}) {
 // Error 错误级别的日志
 // @params format string         序列化格式
 // @params val    ...interface{} 待序列化内容
-func (belog *beLog) Error(format string, val ...interface{}) {
+func (belog *BeLog) Error(format string, val ...interface{}) {
 	// 判断当前级别日志是否需要记录
 	if _, ok := belog.level[LevelError]; !ok { // 当前级别日志不需要记录
 		return
@@ -252,7 +252,7 @@ func (belog *beLog) Error(format string, val ...interface{}) {
 // Fatal 致命级别的日志
 // @params format string         序列化格式
 // @params val    ...interface{} 待序列化内容
-func (belog *beLog) Fatal(format string, val ...interface{}) {
+func (belog *BeLog) Fatal(format string, val ...interface{}) {
 	// 判断当前级别日志是否需要记录
 	if _, ok := belog.level[LevelFatal]; !ok { // 当前级别日志不需要记录
 		return
