@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 )
 
@@ -25,8 +26,6 @@ type FileEngineOption struct {
 // fileEngine 文件引擎
 type fileEngine struct {
 	logPath       string        // 日志文件保存路径（软链）
-	logName       string        // 日志文件名（不含后缀）
-	logExt        string        // 日志文件后缀
 	currLogPath   string        // 日志文件源文件路径
 	currIndex     uint32        // 当前文件分割后缀标识
 	currTime      time.Time     // 当前日志文件使用的日期
@@ -62,16 +61,15 @@ func initFileEngine(option interface{}) *fileEngine {
 	// 赋值软链文件名
 	filelog.logPath = data.LogPath
 	// 截取文件名后缀
-	filelog.logExt = filepath.Ext(data.LogPath)
+	logExt := filepath.Ext(data.LogPath)
 	// 日志文件名（不含后缀）
-	filelog.logName = filelog.logPath[:len(filelog.logPath)-len(filelog.logExt)]
+	logName := filelog.logPath[:len(filelog.logPath)-len(logExt)]
 	// 赋值文件大小限制
 	if data.MaxSize < 1 || data.MaxSize > 10000 {
 		panic("file log size min value is 1(MB),max value is 10000(MB)")
 	}
 	MB := 1024 * 1024
 	filelog.maxSize = uint64(MB) * uint64(data.MaxSize)
-	fmt.Println(filelog.maxSize)
 	// 赋值日志保存天数
 	if data.SaveDay < 1 || data.SaveDay > 1000 {
 		panic("file log save day min value is 1,max value is 1000")
@@ -80,13 +78,13 @@ func initFileEngine(option interface{}) *fileEngine {
 	// 赋值当前日期
 	filelog.currTime = time.Now()
 	// 以当前日期命名文件名
-	filelog.currLogPath = fmt.Sprintf("%s.%s", filelog.logName, filelog.currTime.Format("2006-01-02"))
+	filelog.currLogPath = fmt.Sprintf("%s.%s", logName, filelog.currTime.Format("2006-01-02"))
 	// 循环取文件名(单日最多允许存在999个日志文件)
 	for i := 1; i <= 999; i++ {
 		// 赋值文件分割后缀标识
 		filelog.currIndex = uint32(i)
 		// 拼接当前日志文件名
-		currPath := fmt.Sprintf("%s.%03d%s", filelog.currLogPath, filelog.currIndex, filelog.logExt)
+		currPath := fmt.Sprintf("%s.%03d%s", filelog.currLogPath, filelog.currIndex, logExt)
 		// 判断拼接出来的文件状态
 		file, err := os.Stat(currPath)
 		if err != nil {
@@ -98,7 +96,6 @@ func initFileEngine(option interface{}) *fileEngine {
 			panic("BeLog: get file error: %s")
 		}
 		// 判断文件大小是否超过限制
-		fmt.Println(file.Size(), filelog.maxSize)
 		if file.Size() >= int64(filelog.maxSize) { // 超过了限制，递增后缀标识
 			continue
 		}
@@ -179,10 +176,37 @@ func (filelog *fileEngine) listenLogFileDelete() {
 			time.Sleep(time.Minute)
 			continue
 		}
+		// 获取当天整点时间
+		currDateStr := time.Now().Format("2006-01-02")
+		// 再解析成时间类型
+		currDate, err := time.Parse("2006-01-02", currDateStr)
+		if err != nil {
+			// 睡眠一下
+			time.Sleep(time.Minute)
+			continue
+		}
+		// 初始化正则
+		re, err := regexp.Compile(`[0-9]{4}-[0-9]{2}-[0-9]{2}`)
+		if err != nil {
+			// 睡眠一下
+			time.Sleep(time.Minute)
+			continue
+		}
 		// 遍历文件夹
 		for _, item := range logDir {
 			if !item.IsDir() && filepath.Base(filelog.logPath) != item.Name() {
-				fmt.Println(item.Name())
+				// 获取文件名中的时间部分
+				fileDateStr := re.FindString(item.Name())
+				// 解析成时间类型
+				fileDate, err := time.Parse("2006-01-02", fileDateStr)
+				if err != nil {
+					continue
+				}
+				// 比对两个时间是否大于指定的保存天数
+				if currDate.Sub(fileDate).Hours() >= float64(24*filelog.saveDay) {
+					// 删除这个文件
+					_ = os.Remove(logDirPath + "/" + item.Name())
+				}
 			}
 		}
 		// 睡眠一下
@@ -206,10 +230,11 @@ func (filelog *fileEngine) writeFile() {
 	// 结束时关闭文件
 	defer file.Close()
 	// 创建软链
-	// err = os.Symlink(filelog.currLogPath, filelog.logPath)
-	// if err != nil {
-	// 	panic("BeLog: create file link error: " + err.Error())
-	// }
+	_ = os.Remove(filelog.logPath)
+	err = os.Link(filelog.currLogPath, filelog.logPath)
+	if err != nil {
+		panic("BeLog: create file link error: " + err.Error())
+	}
 	// 监听文件写入或重新打开新的日志文件
 	for {
 		select {
