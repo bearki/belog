@@ -119,7 +119,7 @@ func (filelog *fileEngine) listenLogFileSplit() {
 	// 定义一个10秒间隔的定时器
 	ticker := time.Tick(time.Second * 10)
 	// 死循环监听吧
-	for _ = range ticker {
+	for range ticker {
 		// 获取当前时间
 		currTime := time.Now()
 		// 比对一下当前日志文件的日期和当前日期是否是同一天
@@ -175,7 +175,7 @@ func (filelog *fileEngine) listenLogFileDelete() {
 	// 定义一个1分钟间隔的定时器
 	ticker := time.Tick(time.Minute)
 	// 死循环监听吧
-	for _ = range ticker {
+	for range ticker {
 		// 获取日志储存文件夹部分
 		logDirPath := filepath.Dir(filelog.logPath)
 		// 打开文件夹
