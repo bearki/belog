@@ -26,9 +26,11 @@ type FileEngineOption struct {
 // fileEngine 文件引擎
 type fileEngine struct {
 	logPath       string        // 日志文件保存路径（软链）
+	logPathFormat string        // 日志文件路径格式
 	currLogPath   string        // 日志文件源文件路径
-	currIndex     uint32        // 当前文件分割后缀标识
 	currTime      time.Time     // 当前日志文件使用的日期
+	currIndex     uint32        // 当前文件分割后缀标识
+	currSize      uint64        // 当前日志文件大小
 	maxSize       uint64        // 单文件最大容量（单位：byte）
 	saveDay       uint16        // 日志保存天数
 	fileWriteChan chan string   // 日志写入缓冲管道
@@ -36,11 +38,11 @@ type fileEngine struct {
 }
 
 // initFileEngine 初始化文件引擎
-func initFileEngine(option interface{}) *fileEngine {
+func initFileEngine(options interface{}) *fileEngine {
 	// 类型断言参数
-	data, ok := option.(FileEngineOption)
+	data, ok := options.(FileEngineOption)
 	if !ok {
-		panic("BeLog: file log option is nil")
+		panic("BeLog: file log optionsis nil")
 	}
 	// 判断路径是否为空
 	if len(data.LogPath) <= 0 {
@@ -64,6 +66,8 @@ func initFileEngine(option interface{}) *fileEngine {
 	logExt := filepath.Ext(data.LogPath)
 	// 日志文件名（不含后缀）
 	logName := filelog.logPath[:len(filelog.logPath)-len(logExt)]
+	// 赋值日志文件路径生成格式
+	filelog.logPathFormat = logName + ".%s.%03d" + logExt
 	// 赋值文件大小限制
 	if data.MaxSize < 1 || data.MaxSize > 10000 {
 		panic("file log size min value is 1(MB),max value is 10000(MB)")
@@ -77,30 +81,27 @@ func initFileEngine(option interface{}) *fileEngine {
 	filelog.saveDay = data.SaveDay
 	// 赋值当前日期
 	filelog.currTime = time.Now()
-	// 以当前日期命名文件名
-	filelog.currLogPath = fmt.Sprintf("%s.%s", logName, filelog.currTime.Format("2006-01-02"))
+
 	// 循环取文件名(单日最多允许存在999个日志文件)
 	for i := 1; i <= 999; i++ {
 		// 赋值文件分割后缀标识
 		filelog.currIndex = uint32(i)
-		// 拼接当前日志文件名
-		currPath := fmt.Sprintf("%s.%03d%s", filelog.currLogPath, filelog.currIndex, logExt)
+		// 以当前日期命名文件名
+		filelog.currLogPath = fmt.Sprintf(filelog.logPathFormat, filelog.currTime.Format("2006-01-02"), i)
 		// 判断拼接出来的文件状态
-		file, err := os.Stat(currPath)
+		file, err := os.Stat(filelog.currLogPath)
 		if err != nil {
 			if os.IsNotExist(err) { // 文件不存在，则该文件可用，跳出循环
-				filelog.currLogPath = currPath
 				break
 			}
 			// 文件存在，但获取信息错误
-			panic("BeLog: get file error: %s")
+			panic("BeLog: get file error: %s" + err.Error())
 		}
 		// 判断文件大小是否超过限制
 		if file.Size() >= int64(filelog.maxSize) { // 超过了限制，递增后缀标识
 			continue
 		}
-		// 文件可用，赋值当前文件的路径
-		filelog.currLogPath = currPath
+		// 文件可用
 		break
 	}
 	// 开启监听写入日志
@@ -115,65 +116,71 @@ func initFileEngine(option interface{}) *fileEngine {
 
 // listenLogFileSplit 监听日志文件分割
 func (filelog *fileEngine) listenLogFileSplit() {
+	// 定义一个10秒间隔的定时器
+	ticker := time.Tick(time.Second * 10)
 	// 死循环监听吧
-	for {
-		// 睡眠一下，不然频率太高了
-		time.Sleep(time.Minute)
+	for _ = range ticker {
 		// 获取当前时间
 		currTime := time.Now()
 		// 比对一下当前日志文件的日期和当前日期是否是同一天
-		if currTime.Format("20060102") != filelog.currTime.Format("20060102") { // 不是同一天
+		if currTime.Day() != filelog.currTime.Day() { // 不是同一天
 			// 赋值新日期
 			filelog.currTime = currTime
 			// 赋值新后缀标识
 			filelog.currIndex = 1
-			// 拼接新的文件名
-			logExt := filepath.Ext(filelog.logPath)
-			// 以当前日期命名文件名
-			filelog.currLogPath = fmt.Sprintf("%s.%s", filelog.logPath[:len(logExt)], filelog.currTime.Format("2006-01-02"))
 			// 拼接后缀标识及文件后缀
-			filelog.currLogPath = fmt.Sprintf("%s.%03d%s", filelog.currLogPath, filelog.currIndex, logExt)
+			filelog.currLogPath = fmt.Sprintf(filelog.logPathFormat, filelog.currTime.Format("2006-01-02"), filelog.currIndex)
 			// 通知文件写入函数需要切换文件了，可以结束了
 			filelog.isSplitFile <- struct{}{}
+			// 当切割管道未被释放时不允许重新调用文件写入函数
+			for {
+				if len(filelog.isSplitFile) == 0 {
+					break
+				}
+			}
 			// 异步重新打开文件写入函数
 			go filelog.writeFile()
 			// 开始下一个循环监听
 			continue
 		}
-		// 获取当前日志文件信息
+
+		// 获取文件信息
 		fileinfo, err := os.Stat(filelog.currLogPath)
-		if err != nil { // 文件信息获取失败，开始下一个
+		if err != nil {
 			// 开始下一个循环监听
 			continue
 		}
 		// 判断容量是否超过了
-		if fileinfo.Size() >= int64(filelog.maxSize) {
+		if filelog.currSize >= filelog.maxSize || fileinfo.Size() >= int64(filelog.maxSize) {
 			// 后缀标识加1
 			filelog.currIndex++
-			// 拼接新的文件名
-			logExt := filepath.Ext(filelog.logPath)
-			// 以当前日期命名文件名
-			filelog.currLogPath = fmt.Sprintf("%s.%s", filelog.logPath[:len(logExt)], filelog.currTime.Format("2006-01-02"))
 			// 拼接后缀标识及文件后缀
-			filelog.currLogPath = fmt.Sprintf("%s.%03d%s", filelog.currLogPath, filelog.currIndex, logExt)
+			filelog.currLogPath = fmt.Sprintf(filelog.logPathFormat, filelog.currTime.Format("2006-01-02"), filelog.currIndex)
 			// 通知文件写入函数需要切换文件了，可以结束了
 			filelog.isSplitFile <- struct{}{}
+			// 当切割管道未被释放时不允许重新调用文件写入函数
+			for {
+				if len(filelog.isSplitFile) == 0 {
+					break
+				}
+			}
 			// 异步重新打开文件写入函数
 			go filelog.writeFile()
 		}
 	}
 }
 
-// listenLogFileDelete 监听获取文件删除
+// listenLogFileDelete 监听日志文件删除
 func (filelog *fileEngine) listenLogFileDelete() {
-	// 死循环监听
-	for {
-		// 获取文件夹部分
+	// 定义一个1分钟间隔的定时器
+	ticker := time.Tick(time.Minute)
+	// 死循环监听吧
+	for _ = range ticker {
+		// 获取日志储存文件夹部分
 		logDirPath := filepath.Dir(filelog.logPath)
+		// 打开文件夹
 		logDir, err := ioutil.ReadDir(logDirPath)
 		if err != nil {
-			// 睡眠一下
-			time.Sleep(time.Minute)
 			continue
 		}
 		// 获取当天整点时间
@@ -181,19 +188,13 @@ func (filelog *fileEngine) listenLogFileDelete() {
 		// 再解析成时间类型
 		currDate, err := time.Parse("2006-01-02", currDateStr)
 		if err != nil {
-			// 睡眠一下
-			time.Sleep(time.Minute)
 			continue
 		}
 		// 初始化正则
-		re, err := regexp.Compile(`[0-9]{4}-[0-9]{2}-[0-9]{2}`)
-		if err != nil {
-			// 睡眠一下
-			time.Sleep(time.Minute)
-			continue
-		}
+		re := regexp.MustCompile(`[0-9]{4}-[0-9]{2}-[0-9]{2}`)
 		// 遍历文件夹
 		for _, item := range logDir {
+			// 当前路径不是文件夹并且文件名不是当前正在使用的日志文件名
 			if !item.IsDir() && filepath.Base(filelog.logPath) != item.Name() {
 				// 获取文件名中的时间部分
 				fileDateStr := re.FindString(item.Name())
@@ -209,8 +210,6 @@ func (filelog *fileEngine) listenLogFileDelete() {
 				}
 			}
 		}
-		// 睡眠一下
-		time.Sleep(time.Minute)
 	}
 }
 
@@ -223,14 +222,15 @@ func (filelog *fileEngine) printFileLog(logStr string) {
 // writeFile 写入日志到文件中
 func (filelog *fileEngine) writeFile() {
 	// 创建或追加文件
-	file, err := os.OpenFile(filelog.currLogPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_SYNC, 0666)
+	fileObj, err := os.OpenFile(filelog.currLogPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_SYNC, 0666)
 	if err != nil {
 		panic("BeLog: open file error: " + err.Error())
 	}
 	// 结束时关闭文件
-	defer file.Close()
-	// 创建软链
+	defer fileObj.Close()
+	// 移除软链
 	_ = os.Remove(filelog.logPath)
+	// 创建软链
 	err = os.Link(filelog.currLogPath, filelog.logPath)
 	if err != nil {
 		panic("BeLog: create file link error: " + err.Error())
@@ -240,7 +240,13 @@ func (filelog *fileEngine) writeFile() {
 		select {
 		case logStr := <-filelog.fileWriteChan: // 写日志
 			// 写入到文件中
-			_, _ = file.WriteString(logStr)
+			_, _ = fileObj.WriteString(logStr)
+			// 获取文件当前大小
+			fileinfo, err := fileObj.Stat()
+			if err == nil {
+				// 赋值当前文件大小
+				filelog.currSize = uint64(fileinfo.Size())
+			}
 		case <-filelog.isSplitFile: // 需要分割新文件了
 			// 结束掉该函数，分割监听函数将会重新打开该函数
 			return

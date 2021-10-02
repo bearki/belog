@@ -33,7 +33,7 @@ const (
 )
 
 // initConsoleEngine 初始化控制台引擎
-func initConsoleEngine(optin interface{}) *consoleEngine {
+func initConsoleEngine(options interface{}) *consoleEngine {
 	consolelog := new(consoleEngine)
 	return consolelog
 }

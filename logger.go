@@ -73,14 +73,14 @@ var levelMap = map[belogLevel]belogLevelChar{
 
 // New 初始化一个日志记录器实例
 // @params engine belogEngine 必选的基础日志引擎
-// @params option interface{} 引擎的配置参数
+// @params optionsinterface{} 引擎的配置参数
 // @return        *BeLog      日志记录器实例指针
 // @return        error       初始化时发生的错误信息
-func New(engine belogEngine, option interface{}) *BeLog {
+func New(engine belogEngine, options interface{}) *BeLog {
 	// 初始化日志记录器对象
 	belog := new(BeLog)
 	// 初始化引擎
-	belog.SetEngine(engine, option)
+	belog.SetEngine(engine, options)
 	// 默认不需要跳过函数堆栈
 	belog.SetSkip(0)
 	// 默认开启全部级别的日志记录
@@ -91,7 +91,7 @@ func New(engine belogEngine, option interface{}) *BeLog {
 
 // SetEngine 设置日志记录引擎
 // @params val ...belogEngine 任意数量的日志记录引擎
-func (belog *BeLog) SetEngine(engine belogEngine, option interface{}) *BeLog {
+func (belog *BeLog) SetEngine(engine belogEngine, options interface{}) *BeLog {
 	// 判断引擎是否为空
 	if belog.engine == nil {
 		// 初始化一下
@@ -101,7 +101,7 @@ func (belog *BeLog) SetEngine(engine belogEngine, option interface{}) *BeLog {
 	switch engine {
 	case EngineFile: // 文件引擎
 		// 初始化文件引擎
-		fileEngine := initFileEngine(option)
+		fileEngine := initFileEngine(options)
 		// 赋值引擎输出方法映射
 		belog.engine[engine] = fileEngine.printFileLog
 	/*--------------------------可以在此之后添加更多的引擎---------------------------*/
@@ -111,7 +111,7 @@ func (belog *BeLog) SetEngine(engine belogEngine, option interface{}) *BeLog {
 		fallthrough
 	default: // 默认引擎（和控制台引擎一致）
 		// 初始化控制台引擎
-		consolelog := initConsoleEngine(option)
+		consolelog := initConsoleEngine(options)
 		// 赋值引擎输出方法映射
 		belog.engine[engine] = consolelog.printConsoleLog
 	}
