@@ -71,6 +71,17 @@ var levelMap = map[belogLevel]belogLevelChar{
 	6: 'F',
 }
 
+// 全局控制台颜色
+const (
+	colorReset  = "\033[0m"  // 重置
+	colorGray   = "\033[37m" // 白色
+	colorBlue   = "\033[34m" // 蓝色
+	colorGreen  = "\033[32m" // 绿色
+	colorYellow = "\033[33m" // 黄色
+	colorRed    = "\033[31m" // 红色
+	colorViolet = "\033[35m" // 紫色
+)
+
 // New 初始化一个日志记录器实例
 // @params engine belogEngine 必选的基础日志引擎
 // @params option interface{} 引擎的配置参数
@@ -148,16 +159,36 @@ func (belog *BeLog) SetSkip(skip uint) *BeLog {
 func (belog *BeLog) print(logstr string, levelChar belogLevelChar) {
 	// 统一当前时间
 	currTime := time.Now()
+	// 日志级别字符
+	levelStr := fmt.Sprintf("[%s]", string(levelChar))
+	// 判断是否有控制台引擎
+	if _, ok := belog.engine[EngineConsole]; ok {
+		// 根据级别赋值颜色
+		switch levelChar {
+		case levelMap[LevelTrace]: // 通知级别(灰色)
+			levelStr = colorGray + levelStr + colorReset
+		case levelMap[LevelDebug]: // 调试级别(蓝色)
+			levelStr = colorBlue + levelStr + colorReset
+		case levelMap[LevelInfo]: // 普通级别(绿色)
+			levelStr = colorGreen + levelStr + colorReset
+		case levelMap[LevelWarn]: // 警告级别(黄色)
+			levelStr = colorYellow + levelStr + colorReset
+		case levelMap[LevelError]: // 错误级别(红色)
+			levelStr = colorRed + levelStr + colorReset
+		case levelMap[LevelFatal]: // 紧急级别(紫色)
+			levelStr = colorViolet + levelStr + colorReset
+		}
+	}
 	// 是否需要打印文件行数
 	if belog.isFileLine {
 		// 捕获函数栈文件名及执行行数
 		_, file, line, _ := runtime.Caller(int(belog.skip))
 		// 格式化
 		logstr = fmt.Sprintf(
-			"%s.%03d [%s] [%s:%d]  %s\n",
+			"%s.%03d %s [%s:%d]  %s\n",
 			currTime.Format("2006/01/02 15:04:05"),
 			(currTime.UnixNano()/1e6)%currTime.Unix(),
-			string(levelChar),
+			levelStr,
 			filepath.Base(file),
 			line,
 			logstr,
@@ -165,10 +196,10 @@ func (belog *BeLog) print(logstr string, levelChar belogLevelChar) {
 	} else {
 		// 格式化
 		logstr = fmt.Sprintf(
-			"%s.%03d [%s]  %s\n",
+			"%s.%03d %s  %s\n",
 			currTime.Format("2006/01/02 15:04:05"),
 			(currTime.UnixNano()/1e6)%currTime.Unix(),
-			string(levelChar),
+			levelStr,
 			logstr,
 		)
 	}
