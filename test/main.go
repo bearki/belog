@@ -1,9 +1,14 @@
 package main
 
-import "github.com/bearki/belog"
+import (
+	"github.com/bearki/belog"
+	"github.com/bearki/belog/console"
+	"github.com/bearki/belog/file"
+	"github.com/bearki/belog/logger"
+)
 
 func main() {
-	// 直接使用方式
+	// 直接使用方式（仅能输出到控制台）
 	belog.Trace("this is a trace log")
 	belog.Debug("this is a debug log")
 	belog.Info("this is a info log")
@@ -12,25 +17,39 @@ func main() {
 	belog.Fatal("this is a fatal log")
 
 	// 通过实例方式
-	// 初始化一个实例(控制台引擎记录日志)
-	var mylog = belog.New(
-		belog.EngineFile, // 初始化文件引擎
-		belog.FileEngineOption{
-			LogPath: "./logs/app.log", // 日志储存路径
-			MaxSize: 1,                // 日志单文件大小
-			SaveDay: 1,                // 日志保存天数
+	// 初始化一个实例(可实例化任意引擎)
+	mylog, err := belog.New(
+		new(file.Engine), // 初始化文件引擎
+		file.Options{
+			LogPath:      "./logs/app.log", // 日志储存路径
+			MaxSize:      128,              // 日志单文件大小
+			SaveDay:      7,                // 日志保存天数
+			Async:        false,            // 开启异步写入
+			AsyncChanCap: 1,                // 异步缓存管道容量
 		},
-	).SetEngine(
-		belog.EngineConsole, // 增加控制台引擎
+	)
+	if err != nil { // 初始化失败将不能执行任何后续操作，否则会引起恐慌
+		panic("belog init error: " + err.Error())
+	}
+
+	// 增加控制台引擎
+	err = mylog.SetEngine(
+		new(console.Engine),
 		nil,
-	).SetLevel(
-		belog.LevelTrace,
-		belog.LevelDebug,
-		belog.LevelInfo,
-		belog.LevelWarn,
-		belog.LevelError,
-		belog.LevelFatal,
-	).OpenFileLine()
+	)
+	if err != nil { // 该错误不影响已添加的引擎
+		mylog.Error("add console engine to log error: %s", err.Error())
+	}
+
+	// 配置日志记录级别
+	mylog.SetLevel(
+		logger.LevelTrace,
+		logger.LevelDebug,
+		logger.LevelInfo,
+		logger.LevelWarn,
+		logger.LevelError,
+		logger.LevelFatal,
+	).OpenFileLine() // 开启行号记录
 
 	// 实例对象记录日志
 	mylog.Trace("this is a trace log")
@@ -39,9 +58,4 @@ func main() {
 	mylog.Warn("this is a warn log")
 	mylog.Error("this is a error log")
 	mylog.Fatal("this is a fatal log")
-
-	// 测试大量写入
-	for {
-		mylog.Debug("evnerbvurevubrebvuheurhvhvurebvhbreuvbuerhvuerhvyurebvyureuyuvhuheruifhreufhurehvyurevuvbrebvre")
-	}
 }
