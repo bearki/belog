@@ -7,7 +7,7 @@ go get github.com/bearki/belog
 ```
 
 # 快速使用
-如果你想快速体验belog的特性，我们已内置了一个默认 `console` 实现，你可以直接使用以下方式输出你的日志内容
+如果你想快速体验 `belog` 的特性，我们已内置了一个默认 `console` 实现，你可以直接使用以下方式输出你的日志内容
 ```go
 package main
 
