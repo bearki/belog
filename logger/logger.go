@@ -93,6 +93,9 @@ func New(engine Engine, options interface{}) (Logger, error) {
 }
 
 // SetEngine 设置日志记录引擎
+// @params engine  Engine      引擎对象
+// @params options interface{} 引擎参数
+// @return         error       错误信息
 func (b *beLog) SetEngine(engine Engine, options interface{}) error {
 	// 初始化引擎
 	e, err := engine.Init(options)

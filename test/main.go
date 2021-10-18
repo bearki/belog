@@ -10,7 +10,10 @@ import (
 var Log logger.Logger
 
 func main() {
-	// 直接使用方式（仅能输出到控制台）
+	// 直接使用方式
+	// 配置默认实现
+	belog.OpenFileLine() // 开启行号记录
+	// 打印日志
 	belog.Trace("this is a trace log")
 	belog.Debug("this is a debug log")
 	belog.Info("this is a info log")
@@ -26,7 +29,7 @@ func main() {
 			LogPath:      "./logs/app.log", // 日志储存路径
 			MaxSize:      128,              // 日志单文件大小
 			SaveDay:      7,                // 日志保存天数
-			Async:        true,             // 开启异步写入
+			Async:        true,             // 开启异步写入(main函数提前结束会导致日志未写入)
 			AsyncChanCap: 20,               // 异步缓存管道容量
 		},
 	)
