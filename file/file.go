@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/bearki/belog/logger"
@@ -53,14 +54,28 @@ func (e *Engine) Init(options interface{}) (logger.Engine, error) {
 	if len(data.LogPath) <= 0 {
 		return nil, fmt.Errorf("`logPath` is null")
 	}
+	// 转换路径为当前系统格式
+	data.LogPath = filepath.Join(data.LogPath)
+	// 分割文件夹与文件名部分
+	logDir, logFile := filepath.Split(data.LogPath)
+	// 截取文件名后缀
+	logExt := filepath.Ext(logFile)
+	// 日志文件名（不含后缀）
+	logName := strings.TrimSuffix(logFile, logExt)
 	// 创建路径的文件夹部分
-	err := os.MkdirAll(filepath.Dir(data.LogPath), 0755)
+	err := os.MkdirAll(logDir, 0755)
 	if err != nil {
 		return nil, err
 	}
 
 	// 实例化文件引擎
 	e = new(Engine)
+	// 初始化是否需要分割文件监听通道
+	e.isSplitFile = make(chan struct{}, 1)
+	// 赋值软链文件名
+	e.logPath = data.LogPath
+	// 赋值日志文件路径生成格式
+	e.logPathFormat = filepath.Join(logDir, logName+".%s.%03d"+logExt)
 	// 赋值是否异步写入
 	e.async = data.Async
 	if e.async {
@@ -74,16 +89,6 @@ func (e *Engine) Init(options interface{}) (logger.Engine, error) {
 		// 不开启异步写入，默认缓冲容量为1
 		e.fileWriteChan = make(chan string, 1)
 	}
-	// 初始化是否需要分割文件监听通道
-	e.isSplitFile = make(chan struct{}, 1)
-	// 赋值软链文件名
-	e.logPath = data.LogPath
-	// 截取文件名后缀
-	logExt := filepath.Ext(data.LogPath)
-	// 日志文件名（不含后缀）
-	logName := e.logPath[:len(e.logPath)-len(logExt)]
-	// 赋值日志文件路径生成格式
-	e.logPathFormat = logName + ".%s.%03d" + logExt
 	// 赋值文件大小限制
 	if data.MaxSize < 1 || data.MaxSize > 10000 {
 		return nil, fmt.Errorf("file log size min value is 1(MB),max value is 10000(MB)")
@@ -252,7 +257,7 @@ func (e *Engine) listenLogFileDelete() {
 				// 比对两个时间是否大于指定的保存天数
 				if currDate.Sub(fileDate).Hours() >= float64(24*e.saveDay) {
 					// 删除这个文件
-					_ = os.Remove(logDirPath + "/" + item.Name())
+					_ = os.Remove(filepath.Join(logDirPath, item.Name()))
 				}
 			}
 		}
@@ -269,7 +274,12 @@ func (e *Engine) writeFile() {
 	// 结束时关闭文件
 	defer fileObj.Close()
 	// 移除软链
-	_ = os.Remove(e.logPath)
+	// err = os.Remove(e.logPath)
+	// 当路径不存在时RemoveAll return nil
+	err = os.RemoveAll(e.logPath)
+	if err != nil {
+		panic("remove file error: %s" + err.Error())
+	}
 	// 创建软链
 	err = os.Link(e.currLogPath, e.logPath)
 	if err != nil {
