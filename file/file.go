@@ -266,6 +266,13 @@ func (e *Engine) listenLogFileDelete() {
 
 // writeFile 写入日志到文件中
 func (e *Engine) writeFile() {
+	// 移除软链
+	// err = os.Remove(e.logPath)
+	// 当路径不存在时RemoveAll return nil
+	err := os.RemoveAll(e.logPath)
+	if err != nil {
+		panic("remove file error: " + err.Error())
+	}
 	// 创建或追加文件
 	fileObj, err := os.OpenFile(e.currLogPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_SYNC, 0666)
 	if err != nil {
@@ -273,13 +280,6 @@ func (e *Engine) writeFile() {
 	}
 	// 结束时关闭文件
 	defer fileObj.Close()
-	// 移除软链
-	// err = os.Remove(e.logPath)
-	// 当路径不存在时RemoveAll return nil
-	err = os.RemoveAll(e.logPath)
-	if err != nil {
-		panic("remove file error: %s" + err.Error())
-	}
 	// 创建软链
 	err = os.Link(e.currLogPath, e.logPath)
 	if err != nil {
