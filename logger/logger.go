@@ -46,10 +46,10 @@ type beEnginePrint func(t time.Time, lc BeLevelChar, file string, line int, logS
 
 // beLog 记录器对象
 type beLog struct {
-	isFileLine bool                    // 是否开启文件行号记录
-	skip       uint                    // 需要向上捕获的函数栈层数（该值会自动加2，以便于实例化用户可直接使用）【0-runtime.Caller函数的执行位置（在belog包内），1-Belog各级别方法实现位置（在belog包内），2-belog实例调用各级别日志函数位置，依次类推】
-	engine     []beEnginePrint         // 引擎日志输出方法
-	level      map[BeLevel]BeLevelChar // 需要记录的日志级别字符映射
+	isFileLine bool                     // 是否开启文件行号记录
+	skip       uint                     // 需要向上捕获的函数栈层数（该值会自动加2，以便于实例化用户可直接使用）【0-runtime.Caller函数的执行位置（在belog包内），1-Belog各级别方法实现位置（在belog包内），2-belog实例调用各级别日志函数位置，依次类推】
+	engine     map[Engine]beEnginePrint // 引擎日志输出方法
+	level      map[BeLevel]BeLevelChar  // 需要记录的日志级别字符映射
 }
 
 // 日志保存级别定义
@@ -102,8 +102,12 @@ func (b *beLog) SetEngine(engine Engine, options interface{}) error {
 	if err != nil {
 		return err
 	}
-	// 追加到引擎列表
-	b.engine = append(b.engine, e.Print)
+	// map为空需要初始化
+	if b.engine == nil {
+		b.engine = make(map[Engine]beEnginePrint)
+	}
+	// 赋值引擎
+	b.engine[e] = e.Print
 	return nil
 }
 
@@ -228,12 +232,12 @@ func (b *beLog) print(logstr string, levelChar BeLevelChar) {
 	// 异步等待组
 	var wg sync.WaitGroup
 	// 遍历引擎，执行输出
-	for _, printFunc := range b.engine {
+	for _, out := range b.engine {
 		wg.Add(1)
 		go func(ouput beEnginePrint) {
 			defer wg.Done()
 			ouput(currTime, levelChar, file, line, logstr)
-		}(printFunc)
+		}(out)
 	}
 	// 等待所有引擎完成日志记录
 	wg.Wait()
