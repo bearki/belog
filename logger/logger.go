@@ -48,7 +48,7 @@ type beEnginePrint func(t time.Time, lc BeLevelChar, file string, line int, logS
 type beLog struct {
 	isFileLine bool                     // 是否开启文件行号记录
 	skip       uint                     // 需要向上捕获的函数栈层数（该值会自动加2，以便于实例化用户可直接使用）【0-runtime.Caller函数的执行位置（在belog包内），1-Belog各级别方法实现位置（在belog包内），2-belog实例调用各级别日志函数位置，依次类推】
-	engine     map[Engine]beEnginePrint // 引擎日志输出方法
+	engine     map[string]beEnginePrint // 引擎日志输出方法
 	level      map[BeLevel]BeLevelChar  // 需要记录的日志级别字符映射
 }
 
@@ -104,10 +104,10 @@ func (b *beLog) SetEngine(engine Engine, options interface{}) error {
 	}
 	// map为空需要初始化
 	if b.engine == nil {
-		b.engine = make(map[Engine]beEnginePrint)
+		b.engine = make(map[string]beEnginePrint)
 	}
 	// 赋值引擎
-	b.engine[e] = e.Print
+	b.engine[fmt.Sprintf("%T", e)] = e.Print
 	return nil
 }
 
