@@ -17,6 +17,9 @@ import (
 // 默认实例(控制台引擎记录日志)
 var belogDefault logger.Logger
 
+// 是否已经重新配置过默认引擎
+var isSetBelogDefault = false
+
 // 仅初始化一次的引擎
 var initOnce sync.Once
 
@@ -35,12 +38,21 @@ func New(engine logger.Engine, options interface{}) (logger.Logger, error) {
 // @params options interface{} 引擎参数
 // @return         error       错误信息
 func SetEngine(engine logger.Engine, options interface{}) error {
+	// 判断默认引擎是否已经重新配置过
+	if !isSetBelogDefault {
+		// 未配置过引擎，清空自带的console引擎
+		belogDefault = nil
+	}
 	// 判断引擎是否为空
 	if belogDefault == nil { // 空引擎需要先初始化一个引擎
 		var err error
 		belogDefault, err = New(engine, options)
-		belogDefault.SetSkip(1) // 固定的函数栈层数
-		return err
+		if err != nil {
+			return err
+		}
+		belogDefault.SetSkip(1)  // 固定的函数栈层数
+		isSetBelogDefault = true // 赋值引擎已经配置
+		return nil
 	} else { // 已有实例可直接进行增加
 		return belogDefault.SetEngine(engine, options)
 	}
