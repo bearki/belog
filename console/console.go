@@ -13,23 +13,13 @@ import (
 	"time"
 
 	"github.com/bearki/belog/logger"
+	"github.com/gookit/color"
 )
 
 // Engine 控制台引擎
 type Engine struct {
 	mutex sync.Mutex // 控制台输出锁
 }
-
-// 全局控制台颜色
-const (
-	colorReset  = "\033[0m"  // 重置
-	colorGray   = "\033[37m" // 白色
-	colorBlue   = "\033[34m" // 蓝色
-	colorGreen  = "\033[32m" // 绿色
-	colorYellow = "\033[33m" // 黄色
-	colorRed    = "\033[31m" // 红色
-	colorViolet = "\033[35m" // 紫色
-)
 
 // Init 初始化控制台引擎
 func (e *Engine) Init(options interface{}) (logger.Engine, error) {
@@ -47,17 +37,17 @@ func (e *Engine) Print(t time.Time, lc logger.BeLevelChar, file string, line int
 	var levelStr string
 	switch lc {
 	case 'T': // 通知级别(灰色)
-		levelStr = colorGray + "[T]" + colorReset
+		levelStr = color.Gray.Sprint("[T]")
 	case 'D': // 调试级别(蓝色)
-		levelStr = colorBlue + "[D]" + colorReset
+		levelStr = color.Blue.Sprint("[D]")
 	case 'I': // 普通级别(绿色)
-		levelStr = colorGreen + "[I]" + colorReset
+		levelStr = color.Green.Sprint("[I]")
 	case 'W': // 警告级别(黄色)
-		levelStr = colorYellow + "[W]" + colorReset
+		levelStr = color.Yellow.Sprint("[W]")
 	case 'E': // 错误级别(红色)
-		levelStr = colorRed + "[E]" + colorReset
-	case 'F': // 紧急级别(紫色)
-		levelStr = colorViolet + "[F]" + colorReset
+		levelStr = color.Red.Sprint("[E]")
+	case 'F': // 紧急级别(洋红色)
+		levelStr = color.Magenta.Sprint("[F]")
 	}
 	// 判断是否需要文件行号
 	if len(file) > 0 {
