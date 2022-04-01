@@ -141,7 +141,7 @@ func (e *Engine) Print(t time.Time, lc logger.BeLevelChar, file string, line int
 	if len(file) > 0 {
 		// 格式化打印
 		logStr = fmt.Sprintf(
-			"%s.%03d [%s] [%s:%d]  %s\n",
+			"%s.%03d [%s] [%s:%d]  %s\r\n",
 			t.Format("2006/01/02 15:04:05"),
 			(t.UnixNano()/1e6)%t.Unix(),
 			string(lc),
@@ -152,7 +152,7 @@ func (e *Engine) Print(t time.Time, lc logger.BeLevelChar, file string, line int
 	} else {
 		// 格式化打印
 		logStr = fmt.Sprintf(
-			"%s.%03d [%s]  %s\n",
+			"%s.%03d [%s]  %s\r\n",
 			t.Format("2006/01/02 15:04:05"),
 			(t.UnixNano()/1e6)%t.Unix(),
 			string(lc),
