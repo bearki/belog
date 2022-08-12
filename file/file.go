@@ -42,6 +42,11 @@ type Engine struct {
 	fileWriteChan chan string // 日志写入缓冲管道
 }
 
+// 创建一个引擎
+func New() *Engine {
+	return new(Engine)
+}
+
 // initFileEngine 初始化文件引擎
 func (e *Engine) Init(options interface{}) (logger.Engine, error) {
 	// 类型断言参数
