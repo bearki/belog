@@ -10,6 +10,7 @@ package file
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -30,17 +31,15 @@ type Options struct {
 
 // Engine 文件引擎
 type Engine struct {
-	logPath       string        // 日志文件保存路径
-	maxSize       uint64        // 单文件最大容量（单位：byte）
-	saveDay       uint16        // 日志保存天数
-	logPathFormat string        // 日志文件路径格式
-	currLogPath   string        // 日志文件源文件路径
-	currTime      time.Time     // 当前日志文件使用的日期
-	currIndex     uint32        // 当前文件分割后缀标识
-	currSize      uint64        // 当前日志文件大小
-	async         bool          // 是否异步写入日志
-	fileWriteChan chan string   // 日志写入缓冲管道
-	isSplitFile   chan struct{} // 监听是否需要分割文件
+	logPath       string      // 日志文件保存路径
+	maxSize       uint64      // 单文件最大容量（单位：byte）
+	saveDay       uint16      // 日志保存天数
+	logPathFormat string      // 日志文件路径格式
+	currLogPath   string      // 日志文件源文件路径
+	currTime      time.Time   // 当前日志文件使用的日期
+	currIndex     uint32      // 当前文件分割后缀标识
+	async         bool        // 是否异步写入日志
+	fileWriteChan chan string // 日志写入缓冲管道
 }
 
 // initFileEngine 初始化文件引擎
@@ -50,10 +49,12 @@ func (e *Engine) Init(options interface{}) (logger.Engine, error) {
 	if !ok {
 		return nil, fmt.Errorf("file log optionsis nil")
 	}
+
 	// 判断路径是否为空
 	if len(data.LogPath) <= 0 {
 		return nil, fmt.Errorf("`logPath` is null")
 	}
+
 	// 转换路径为当前系统格式
 	data.LogPath = filepath.Join(data.LogPath)
 	// 分割文件夹与文件名部分
@@ -70,8 +71,6 @@ func (e *Engine) Init(options interface{}) (logger.Engine, error) {
 
 	// 实例化文件引擎
 	e = new(Engine)
-	// 初始化是否需要分割文件监听通道
-	e.isSplitFile = make(chan struct{}, 1)
 	// 赋值软链文件名
 	e.logPath = data.LogPath
 	// 赋值日志文件路径生成格式
@@ -125,14 +124,154 @@ func (e *Engine) Init(options interface{}) (logger.Engine, error) {
 		// 文件可用
 		break
 	}
-	// 开启监听写入日志
-	go e.writeFile()
+
+	// 异步监听过期文件删除
+	go e.deleteTimeoutLogFile()
+	// 创建一个文件分割通信管道
+	splitFile := make(chan struct{}, 1)
 	// 异步监听文件切割
-	go e.listenLogFileSplit()
-	// 异步监听文件删除
-	go e.listenLogFileDelete()
+	go e.listenLogFileSplit(splitFile)
+	// 异步处理日志文件写入
+	go func() {
+		for {
+			// 阻塞开启监听写入日志
+			e.writeFile(splitFile)
+		}
+	}()
+
 	// 返回文件日志实例
 	return e, nil
+}
+
+// listenLogFileSplit 监听日志文件分割
+func (e *Engine) listenLogFileSplit(splitFile chan<- struct{}) {
+	// 定义一个10秒间隔的定时器
+	ticker := time.NewTicker(time.Second * 10)
+	defer ticker.Stop()
+
+	// 死循环监听吧
+	for range ticker.C {
+		// 获取当前时间
+		currTime := time.Now()
+		// 比对一下当前日志文件的日期和当前日期是否是同一天
+		if currTime.Day() != e.currTime.Day() { // 不是同一天
+			// 赋值新日期
+			e.currTime = currTime
+			// 赋值新后缀标识
+			e.currIndex = 1
+			// 拼接后缀标识及文件后缀
+			e.currLogPath = fmt.Sprintf(e.logPathFormat, e.currTime.Format("2006-01-02"), e.currIndex)
+			// 通知执行文件分割
+			splitFile <- struct{}{}
+			// 开启下一个监听
+			continue
+		}
+
+		// 获取文件信息
+		fileinfo, err := os.Stat(e.currLogPath)
+		if err != nil {
+			// 开启下一个监听
+			continue
+		}
+
+		// 判断容量是否超过了
+		if fileinfo.Size() >= int64(e.maxSize) {
+			// 后缀标识加1
+			e.currIndex++
+			// 拼接后缀标识及文件后缀
+			e.currLogPath = fmt.Sprintf(e.logPathFormat, e.currTime.Format("2006-01-02"), e.currIndex)
+			// 通知执行文件分割
+			splitFile <- struct{}{}
+			// 开启下一个监听
+			continue
+		}
+	}
+}
+
+// writeFile 写入日志到文件中
+func (e *Engine) writeFile(splitFile <-chan struct{}) {
+	// 移除软链
+	err := os.RemoveAll(e.logPath)
+	if err != nil {
+		log.Fatalln("remove file error: " + err.Error())
+	}
+
+	// 创建或追加文件
+	fileObj, err := os.OpenFile(e.currLogPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_SYNC, 0666)
+	if err != nil {
+		log.Fatalln("open file error: " + err.Error())
+	}
+	// 结束时关闭文件
+	defer fileObj.Close()
+
+	// 创建软链
+	err = os.Link(e.currLogPath, e.logPath)
+	if err != nil {
+		log.Fatalln("create file link error: " + err.Error())
+	}
+
+	// 监听文件写入或重新打开新的日志文件
+	for {
+		select {
+		case logStr := <-e.fileWriteChan: // 写日志
+			// 写入到文件中
+			_, err = fileObj.WriteString(logStr)
+			if err != nil {
+				log.Println(err.Error())
+			}
+		case <-splitFile: // 需要分割新文件了
+			return
+		}
+	}
+}
+
+// listenLogFileDelete 监听日志文件删除
+func (e *Engine) deleteTimeoutLogFile() {
+	// 定义一个1分钟间隔的定时器
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+	// 死循环监听吧
+	for range ticker.C {
+		// 获取日志储存文件夹部分
+		logDirPath := filepath.Dir(e.logPath)
+		// 打开文件夹
+		logDir, err := ioutil.ReadDir(logDirPath)
+		if err != nil {
+			log.Println(err.Error())
+			return
+		}
+		// 获取当天整点时间
+		currDateStr := time.Now().Format("2006-01-02")
+		// 再解析成时间类型
+		currDate, err := time.Parse("2006-01-02", currDateStr)
+		if err != nil {
+			log.Println(err.Error())
+			return
+		}
+		// 初始化正则
+		re := regexp.MustCompile(`[0-9]{4}-[0-9]{2}-[0-9]{2}`)
+		// 遍历文件夹
+		for _, item := range logDir {
+			// 当前路径不是文件夹并且文件名不是当前正在使用的日志文件名
+			if !item.IsDir() && filepath.Base(e.logPath) != item.Name() {
+				// 获取文件名中的时间部分
+				fileDateStr := re.FindString(item.Name())
+				// 解析成时间类型
+				fileDate, err := time.Parse("2006-01-02", fileDateStr)
+				if err != nil {
+					continue
+				}
+				// 比对两个时间是否大于指定的保存天数
+				if currDate.Sub(fileDate).Hours() >= float64(24*e.saveDay) {
+					// 删除这个文件
+					err = os.Remove(filepath.Join(logDirPath, item.Name()))
+					if err != nil {
+						log.Println(err.Error())
+					}
+				}
+			}
+		}
+	}
 }
 
 // printFileLog 记录日志到文件
@@ -164,142 +303,6 @@ func (e *Engine) Print(t time.Time, lc logger.BeLevelChar, file string, line int
 	// 判断是否开启异步写入
 	if !e.async { // 阻塞，直到写入完成
 		for len(e.fileWriteChan) > 0 {
-		}
-	}
-}
-
-// listenLogFileSplit 监听日志文件分割
-func (e *Engine) listenLogFileSplit() {
-	// 定义一个10秒间隔的定时器
-	ticker := time.Tick(time.Second * 10)
-	// 死循环监听吧
-	for range ticker {
-		// 获取当前时间
-		currTime := time.Now()
-		// 比对一下当前日志文件的日期和当前日期是否是同一天
-		if currTime.Day() != e.currTime.Day() { // 不是同一天
-			// 赋值新日期
-			e.currTime = currTime
-			// 赋值新后缀标识
-			e.currIndex = 1
-			// 拼接后缀标识及文件后缀
-			e.currLogPath = fmt.Sprintf(e.logPathFormat, e.currTime.Format("2006-01-02"), e.currIndex)
-			// 通知文件写入函数需要切换文件了，可以结束了
-			e.isSplitFile <- struct{}{}
-			// 当切割管道未被释放时不允许重新调用文件写入函数
-			for len(e.isSplitFile) > 0 {
-			}
-			// 异步重新打开文件写入函数
-			go e.writeFile()
-			// 开始下一个循环监听
-			continue
-		}
-
-		// 获取文件信息
-		fileinfo, err := os.Stat(e.currLogPath)
-		if err != nil {
-			// 开始下一个循环监听
-			continue
-		}
-		// 判断容量是否超过了
-		if e.currSize >= e.maxSize || fileinfo.Size() >= int64(e.maxSize) {
-			// 后缀标识加1
-			e.currIndex++
-			// 拼接后缀标识及文件后缀
-			e.currLogPath = fmt.Sprintf(e.logPathFormat, e.currTime.Format("2006-01-02"), e.currIndex)
-			// 通知文件写入函数需要切换文件了，可以结束了
-			e.isSplitFile <- struct{}{}
-			// 当切割管道未被释放时不允许重新调用文件写入函数
-			for {
-				if len(e.isSplitFile) == 0 {
-					break
-				}
-			}
-			// 异步重新打开文件写入函数
-			go e.writeFile()
-		}
-	}
-}
-
-// listenLogFileDelete 监听日志文件删除
-func (e *Engine) listenLogFileDelete() {
-	// 定义一个1分钟间隔的定时器
-	ticker := time.Tick(time.Minute)
-	// 死循环监听吧
-	for range ticker {
-		// 获取日志储存文件夹部分
-		logDirPath := filepath.Dir(e.logPath)
-		// 打开文件夹
-		logDir, err := ioutil.ReadDir(logDirPath)
-		if err != nil {
-			continue
-		}
-		// 获取当天整点时间
-		currDateStr := time.Now().Format("2006-01-02")
-		// 再解析成时间类型
-		currDate, err := time.Parse("2006-01-02", currDateStr)
-		if err != nil {
-			continue
-		}
-		// 初始化正则
-		re := regexp.MustCompile(`[0-9]{4}-[0-9]{2}-[0-9]{2}`)
-		// 遍历文件夹
-		for _, item := range logDir {
-			// 当前路径不是文件夹并且文件名不是当前正在使用的日志文件名
-			if !item.IsDir() && filepath.Base(e.logPath) != item.Name() {
-				// 获取文件名中的时间部分
-				fileDateStr := re.FindString(item.Name())
-				// 解析成时间类型
-				fileDate, err := time.Parse("2006-01-02", fileDateStr)
-				if err != nil {
-					continue
-				}
-				// 比对两个时间是否大于指定的保存天数
-				if currDate.Sub(fileDate).Hours() >= float64(24*e.saveDay) {
-					// 删除这个文件
-					_ = os.Remove(filepath.Join(logDirPath, item.Name()))
-				}
-			}
-		}
-	}
-}
-
-// writeFile 写入日志到文件中
-func (e *Engine) writeFile() {
-	// 移除软链
-	// err = os.Remove(e.logPath)
-	// 当路径不存在时RemoveAll return nil
-	err := os.RemoveAll(e.logPath)
-	if err != nil {
-		panic("remove file error: " + err.Error())
-	}
-	// 创建或追加文件
-	fileObj, err := os.OpenFile(e.currLogPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_SYNC, 0666)
-	if err != nil {
-		panic("open file error: " + err.Error())
-	}
-	// 结束时关闭文件
-	defer fileObj.Close()
-	// 创建软链
-	err = os.Link(e.currLogPath, e.logPath)
-	if err != nil {
-		panic("create file link error: " + err.Error())
-	}
-	// 监听文件写入或重新打开新的日志文件
-	for {
-		select {
-		case logStr := <-e.fileWriteChan: // 写日志
-			// 写入到文件中
-			_, _ = fileObj.WriteString(logStr)
-			// 获取文件当前大小
-			fileinfo, err := fileObj.Stat()
-			if err == nil {
-				// 赋值当前文件大小
-				e.currSize = uint64(fileinfo.Size())
-			}
-		case <-e.isSplitFile: // 需要分割新文件了
-			// 结束掉该函数，分割监听函数将会重新打开该函数
-			return
 		}
 	}
 }
