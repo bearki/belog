@@ -1,21 +1,16 @@
-package main
+package test
 
 import (
+	"testing"
+
 	"github.com/bearki/belog"
 	"github.com/bearki/belog/console"
 	"github.com/bearki/belog/file"
 	"github.com/bearki/belog/logger"
 )
 
-func main() {
-	// 1、默认方式
-	defaultLogPrint()
-	// 2、实例方式
-	newLogPrint()
-}
-
-// 1、默认方式输出日志
-func defaultLogPrint() {
+// TestDefultBelog 默认方式输出日志
+func TestDefultBelog(t *testing.T) {
 	// 配置主引擎
 	err := belog.SetEngine(new(file.Engine), file.Options{
 		LogPath: "./logs/test_default.log",
@@ -51,14 +46,14 @@ func defaultLogPrint() {
 	belog.Fatal("this is a fatal log")
 }
 
-// 2、实例方式输出日志
-func newLogPrint() {
+// TestNewBelog 实例方式输出日志
+func TestNewBelog(t *testing.T) {
 	// 初始化一个实例(可实例化任意引擎)
 	mylog, err := belog.New(
 		new(file.Engine), // 初始化文件引擎
 		file.Options{
 			LogPath:      "./logs/test_new.log", // 日志储存路径
-			MaxSize:      128,                   // 日志单文件大小
+			MaxSize:      7,                     // 日志单文件大小
 			SaveDay:      7,                     // 日志保存天数
 			Async:        false,                 // 开启异步写入(main函数提前结束会导致日志未写入)
 			AsyncChanCap: 20,                    // 异步缓存管道容量
@@ -90,10 +85,12 @@ func newLogPrint() {
 	/*************************************/
 
 	// 实例对象记录日志
-	mylog.Trace("this is a trace log")
-	mylog.Debug("this is a debug log")
-	mylog.Info("this is a info log")
-	mylog.Warn("this is a warn log")
-	mylog.Error("this is a error log")
-	mylog.Fatal("this is a fatal log")
+	for i := 0; i < 1000000; i++ {
+		mylog.Trace("this is a trace log")
+		mylog.Debug("this is a debug log")
+		mylog.Info("this is a info log")
+		mylog.Warn("this is a warn log")
+		mylog.Error("this is a error log")
+		mylog.Fatal("this is a fatal log")
+	}
 }
