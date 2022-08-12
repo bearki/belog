@@ -38,13 +38,40 @@ type Engine struct {
 	currLogPath   string      // 日志文件源文件路径
 	currTime      time.Time   // 当前日志文件使用的日期
 	currIndex     uint32      // 当前文件分割后缀标识
-	async         bool        // 是否异步写入日志
 	fileWriteChan chan string // 日志写入缓冲管道
 }
 
 // 创建一个引擎
 func New() *Engine {
 	return new(Engine)
+}
+
+// validity 判断参数有效性
+func (p *Options) validity() error {
+	// 转换路径为当前系统格式
+	p.LogPath = filepath.Join(p.LogPath)
+	// 判断路径是否为空
+	if len(p.LogPath) <= 0 {
+		return fmt.Errorf("`logPath` is null")
+	}
+	// 判断日志保存天数
+	if p.SaveDay < 1 || p.SaveDay > 1000 {
+		return fmt.Errorf("file log save day min value is 1,max value is 1000")
+	}
+	// 判断日志大小限制
+	if p.MaxSize < 1 || p.MaxSize > 10000 {
+		return fmt.Errorf("file log size min value is 1(MB),max value is 10000(MB)")
+	}
+	// 判断异步模式下的管道容量
+	if p.Async {
+		if p.AsyncChanCap > 99999 {
+			return fmt.Errorf("async log channel cap error, min 1, max 99999")
+		}
+	} else {
+		// 非异步情况下管道容量为1
+		p.AsyncChanCap = 1
+	}
+	return nil
 }
 
 // initFileEngine 初始化文件引擎
@@ -55,21 +82,13 @@ func (e *Engine) Init(options interface{}) (logger.Engine, error) {
 		return nil, fmt.Errorf("file log optionsis nil")
 	}
 
-	// 判断路径是否为空
-	if len(data.LogPath) <= 0 {
-		return nil, fmt.Errorf("`logPath` is null")
+	// 判断参数有效性
+	if err := data.validity(); err != nil {
+		return nil, err
 	}
 
-	// 转换路径为当前系统格式
-	data.LogPath = filepath.Join(data.LogPath)
-	// 分割文件夹与文件名部分
-	logDir, logFile := filepath.Split(data.LogPath)
-	// 截取文件名后缀
-	logExt := filepath.Ext(logFile)
-	// 日志文件名（不含后缀）
-	logName := strings.TrimSuffix(logFile, logExt)
 	// 创建路径的文件夹部分
-	err := os.MkdirAll(logDir, 0755)
+	err := os.MkdirAll(filepath.Dir(data.LogPath), 0755)
 	if err != nil {
 		return nil, err
 	}
@@ -78,56 +97,26 @@ func (e *Engine) Init(options interface{}) (logger.Engine, error) {
 	e = new(Engine)
 	// 赋值软链文件名
 	e.logPath = data.LogPath
+	// 分割文件夹与文件名部分
+	logDir, logFile := filepath.Split(e.logPath)
+	// 截取文件名后缀
+	logExt := filepath.Ext(logFile)
+	// 日志文件名（不含后缀）
+	logName := strings.TrimSuffix(logFile, logExt)
 	// 赋值日志文件路径生成格式
 	e.logPathFormat = filepath.Join(logDir, logName+".%s.%03d"+logExt)
-	// 赋值是否异步写入
-	e.async = data.Async
-	if e.async {
-		// 开启异步写入，判断容量有效性
-		if data.AsyncChanCap > 99999 {
-			return nil, fmt.Errorf("async log channel cap error, min 1, max 99999")
-		}
-		// 容量有效，初始化管道
-		e.fileWriteChan = make(chan string, data.AsyncChanCap)
-	} else {
-		// 不开启异步写入，默认缓冲容量为1
-		e.fileWriteChan = make(chan string, 1)
-	}
+	// 初始化写入管道容量
+	e.fileWriteChan = make(chan string, data.AsyncChanCap)
 	// 赋值文件大小限制
-	if data.MaxSize < 1 || data.MaxSize > 10000 {
-		return nil, fmt.Errorf("file log size min value is 1(MB),max value is 10000(MB)")
-	}
 	MB := 1024 * 1024
 	e.maxSize = uint64(MB) * uint64(data.MaxSize)
 	// 赋值日志保存天数
-	if data.SaveDay < 1 || data.SaveDay > 1000 {
-		return nil, fmt.Errorf("file log save day min value is 1,max value is 1000")
-	}
 	e.saveDay = data.SaveDay
 	// 赋值当前日期
 	e.currTime = time.Now()
-
-	// 循环取文件名(单日最多允许存在999个日志文件)
-	for i := 1; i <= 999; i++ {
-		// 赋值文件分割后缀标识
-		e.currIndex = uint32(i)
-		// 以当前日期命名文件名
-		e.currLogPath = fmt.Sprintf(e.logPathFormat, e.currTime.Format("2006-01-02"), i)
-		// 判断拼接出来的文件状态
-		file, err := os.Stat(e.currLogPath)
-		if err != nil {
-			if os.IsNotExist(err) { // 文件不存在，则该文件可用，跳出循环
-				break
-			}
-			// 文件存在，但获取信息错误
-			return nil, err
-		}
-		// 判断文件大小是否超过限制
-		if file.Size() >= int64(e.maxSize) { // 超过了限制，递增后缀标识
-			continue
-		}
-		// 文件可用
-		break
+	// 筛选出合适的下标日志文件
+	if err = e.selectAvailableFile(); err != nil {
+		return nil, err
 	}
 
 	// 异步监听过期文件删除
@@ -146,6 +135,35 @@ func (e *Engine) Init(options interface{}) (logger.Engine, error) {
 
 	// 返回文件日志实例
 	return e, nil
+}
+
+// selectAvailableFile 选择一个可用的文件
+func (e *Engine) selectAvailableFile() error {
+	// 循环取文件名(单日最多允许存在999个日志文件)
+	for i := 1; i <= 999; i++ {
+		// 赋值文件分割后缀标识
+		e.currIndex = uint32(i)
+		// 以当前日期命名文件名
+		e.currLogPath = fmt.Sprintf(e.logPathFormat, e.currTime.Format("2006-01-02"), i)
+		// 判断拼接出来的文件状态
+		file, err := os.Stat(e.currLogPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// 文件不存在，则该文件可用，跳出循环
+				break
+			}
+			// 文件存在，但获取信息错误
+			return err
+		}
+		// 判断文件大小是否超过限制
+		if file.Size() >= int64(e.maxSize) {
+			// 超过了限制，递增后缀标识
+			continue
+		}
+		// 文件可用
+		break
+	}
+	return nil
 }
 
 // listenLogFileSplit 监听日志文件分割
@@ -305,9 +323,4 @@ func (e *Engine) Print(t time.Time, lc logger.BeLevelChar, file string, line int
 	}
 	// 写入到管道中
 	e.fileWriteChan <- logStr
-	// 判断是否开启异步写入
-	if !e.async { // 阻塞，直到写入完成
-		for len(e.fileWriteChan) > 0 {
-		}
-	}
 }
