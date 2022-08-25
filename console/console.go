@@ -9,7 +9,6 @@ package console
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/bearki/belog/logger"
@@ -17,9 +16,7 @@ import (
 )
 
 // Engine 控制台引擎
-type Engine struct {
-	mutex sync.Mutex // 控制台输出锁
-}
+type Engine struct{}
 
 // Init 初始化控制台引擎
 func (e *Engine) Init(options interface{}) (logger.Engine, error) {
@@ -29,10 +26,6 @@ func (e *Engine) Init(options interface{}) (logger.Engine, error) {
 
 // printConsoleLog 打印控制台日志
 func (e *Engine) Print(t time.Time, lc logger.BeLevelChar, file string, line int, logStr string) {
-	// 加锁
-	e.mutex.Lock()
-	// 解锁
-	defer e.mutex.Unlock()
 	// 根据级别赋值颜色
 	var levelStr string
 	switch lc {
