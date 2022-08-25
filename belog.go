@@ -75,7 +75,7 @@ func initDefaultEngine() {
 	// 判断引擎是否初始化
 	if belogDefault == nil {
 		initOnce.Do(func() {
-			belogDefault, _ = New(new(console.Engine), nil)
+			belogDefault, _ = New(console.New(), nil)
 			belogDefault.SetSkip(1) // 固定的函数栈层数
 		})
 	}
