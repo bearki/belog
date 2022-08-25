@@ -12,7 +12,7 @@ import (
 // TestDefultBelog 默认方式输出日志
 func TestDefultBelog(t *testing.T) {
 	// 配置主引擎
-	err := belog.SetEngine(new(file.Engine), file.Options{
+	err := belog.SetEngine(file.New(), file.Options{
 		LogPath: "./logs/test_default.log",
 		MaxSize: 10,
 		SaveDay: 7,
@@ -22,7 +22,7 @@ func TestDefultBelog(t *testing.T) {
 		panic(err)
 	}
 	// 配置次引擎（次引擎配置失败不影响主引擎）
-	err = belog.SetEngine(new(console.Engine), nil)
+	err = belog.SetEngine(console.New(), nil)
 	if err != nil {
 		belog.Error("次引擎配置失败不影响主引擎: %s", err.Error())
 	}
@@ -50,7 +50,7 @@ func TestDefultBelog(t *testing.T) {
 func TestNewBelog(t *testing.T) {
 	// 初始化一个实例(可实例化任意引擎)
 	mylog, err := belog.New(
-		new(file.Engine), // 初始化文件引擎
+		file.New(), // 初始化文件引擎
 		file.Options{
 			LogPath:      "./logs/test_new.log", // 日志储存路径
 			MaxSize:      7,                     // 日志单文件大小
@@ -76,7 +76,7 @@ func TestNewBelog(t *testing.T) {
 	/**********支持多引擎同时输出**********/
 	/*************************************/
 	// err = mylog.SetEngine( // 增加控制台引擎
-	// 	new(console.Engine),
+	// 	console.New(),
 	// 	nil,
 	// )
 	// if err != nil { // 该错误不影响已添加的引擎

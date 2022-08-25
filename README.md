@@ -43,7 +43,7 @@ var Log logger.Logger
 func main() {
 	// 初始化一个实例(可实例化任意引擎)
 	mylog, err := belog.New(
-		new(file.Engine), // 初始化文件引擎
+		file.New(), // 初始化文件引擎
 		file.Options{
 			LogPath:      "./logs/app.log", // 日志储存路径
 			MaxSize:      128,              // 日志单文件大小
@@ -90,7 +90,7 @@ func main() {
 # 二次封装
 你可以参考 `belog.go` 的方式将 `belog` 进行二次封装，这样通过自己的包即可记录日志，防止在过多的包中引入第三方包，便于后期的管理，值得注意的是，二次封装时需要配置函数栈层数，否则将会造成文件名及行数捕获不一致的问题，大多数情况下采用如下层级即可
 ```go
-belogDefault, _ = belog.New(new(console.Engine), nil) // 初始化引擎
+belogDefault, _ = belog.New(console.New(), nil) // 初始化引擎
 belogDefault.SetSkip(1)                         // 配置函数栈
 ```
 
@@ -100,8 +100,8 @@ belogDefault.SetSkip(1)                         // 配置函数栈
 ```go
 // Engine 引擎接口
 type Engine interface {
-	Init(options interface{}) (Engine, error)
-	Print(t time.Time, lc BeLevelChar, file string, line int, logStr string)
+	Init(interface{}) (Engine, error)
+	Print(time.Time, BeLevelChar, string, int, string)
 }
 ```
 ### 引擎实现
@@ -117,22 +117,20 @@ import (
 )
 
 // Engine 控制台引擎
-type Engine struct {
-	mutex sync.Mutex // 控制台输出锁
+type Engine struct {}
+
+// New 初始化实例
+func New() logger.Engine {
+	return new(Engine)
 }
 
-// Init 初始化控制台引擎
+// Init 初始化控制台引擎参数
 func (e *Engine) Init(options interface{}) (logger.Engine, error) {
-	e = new(Engine)
 	return e, nil
 }
 
 // printConsoleLog 打印控制台日志
 func (e *Engine) Print(t time.Time, lc logger.BeLevelChar, file string, line int, logStr string) {
-	// 加锁
-	e.mutex.Lock()
-	// 解锁
-	defer e.mutex.Unlock()
 	// 判断是否需要文件行号
 	if len(file) > 0 {
 		// 格式化打印
@@ -166,7 +164,7 @@ import (
 )
 
 func main() {
-    logs, err = belog.New(new(console.Engine), nil)
+    logs, err = belog.New(console.New(), nil)
     if err != nil {
         panic(err.Error())
     }
