@@ -18,6 +18,11 @@ import (
 // Engine 控制台引擎
 type Engine struct{}
 
+// New 创建控制台引擎
+func New() logger.Engine {
+	return new(Engine)
+}
+
 // Init 初始化控制台引擎
 func (e *Engine) Init(options interface{}) (logger.Engine, error) {
 	e = new(Engine)
@@ -25,7 +30,7 @@ func (e *Engine) Init(options interface{}) (logger.Engine, error) {
 }
 
 // printConsoleLog 打印控制台日志
-func (e *Engine) Print(t time.Time, lc logger.BeLevelChar, file string, line int, logStr string) {
+func (e *Engine) Print(t time.Time, lc logger.LevelChar, file string, line int, logStr string) {
 	// 根据级别赋值颜色
 	var levelStr string
 	switch lc {

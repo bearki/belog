@@ -14,29 +14,29 @@ import (
 	"github.com/bearki/belog/logger"
 )
 
-// 默认实例(控制台引擎记录日志)
-var belogDefault logger.Logger
-
-// 是否已经重新配置过默认引擎
-var isSetBelogDefault = false
-
-// 仅初始化一次的引擎
-var initOnce sync.Once
+var (
+	// 默认实例(控制台引擎记录日志)
+	belogDefault logger.Logger
+	// 是否已经重新配置过默认引擎
+	isSetBelogDefault = false
+	// 仅初始化一次的引擎
+	initOnce sync.Once
+)
 
 // New 初始化一个日志记录器实例
-// @params engine  belogEngine 必选的基础日志引擎
-// @params options interface{} 引擎的配置参数
-// @return         *BeLog      日志记录器实例指针
-// @return         error       错误信息
+// 	@params engine  belogEngine 必选的基础日志引擎
+// 	@params options interface{} 引擎的配置参数
+// 	@return         *BeLog      日志记录器实例指针
+// 	@return         error       错误信息
 func New(engine logger.Engine, options interface{}) (logger.Logger, error) {
 	// 返回日志示例指针
 	return logger.New(engine, options)
 }
 
 // SetEngine 配置默认实现的引擎
-// @params engine  Engine      引擎对象
-// @params options interface{} 引擎参数
-// @return         error       错误信息
+// 	@params engine  Engine      引擎对象
+// 	@params options interface{} 引擎参数
+// 	@return         error       错误信息
 func SetEngine(engine logger.Engine, options interface{}) error {
 	// 判断默认引擎是否已经重新配置过
 	if !isSetBelogDefault {
@@ -59,7 +59,7 @@ func SetEngine(engine logger.Engine, options interface{}) error {
 }
 
 // SetLevel 默认实现的日志级别设置
-func SetLevel(val ...logger.BeLevel) logger.Logger {
+func SetLevel(val ...logger.Level) logger.Logger {
 	initDefaultEngine()
 	return belogDefault.SetLevel(val...)
 }
@@ -82,8 +82,8 @@ func initDefaultEngine() {
 }
 
 // Trace 通知级别的日志
-// @params format string         序列化格式
-// @params val    ...interface{} 待序列化内容
+// 	@params format string         序列化格式
+// 	@params val    ...interface{} 待序列化内容
 func Trace(format string, val ...interface{}) {
 	// 默认引擎为空时初始化一次默认引擎
 	initDefaultEngine()
@@ -91,8 +91,8 @@ func Trace(format string, val ...interface{}) {
 }
 
 // Debug 调试级别的日志
-// @params format string         序列化格式
-// @params val    ...interface{} 待序列化内容
+// 	@params format string         序列化格式
+// 	@params val    ...interface{} 待序列化内容
 func Debug(format string, val ...interface{}) {
 	// 默认引擎为空时初始化一次默认引擎
 	initDefaultEngine()
@@ -100,8 +100,8 @@ func Debug(format string, val ...interface{}) {
 }
 
 // Info 普通级别的日志
-// @params format string         序列化格式
-// @params val    ...interface{} 待序列化内容
+// 	@params format string         序列化格式
+// 	@params val    ...interface{} 待序列化内容
 func Info(format string, val ...interface{}) {
 	// 默认引擎为空时初始化一次默认引擎
 	initDefaultEngine()
@@ -109,8 +109,8 @@ func Info(format string, val ...interface{}) {
 }
 
 // Warn 警告级别的日志
-// @params format string         序列化格式
-// @params val    ...interface{} 待序列化内容
+// 	@params format string         序列化格式
+// 	@params val    ...interface{} 待序列化内容
 func Warn(format string, val ...interface{}) {
 	// 默认引擎为空时初始化一次默认引擎
 	initDefaultEngine()
@@ -118,8 +118,8 @@ func Warn(format string, val ...interface{}) {
 }
 
 // Error 错误级别的日志
-// @params format string         序列化格式
-// @params val    ...interface{} 待序列化内容
+// 	@params format string         序列化格式
+// 	@params val    ...interface{} 待序列化内容
 func Error(format string, val ...interface{}) {
 	// 默认引擎为空时初始化一次默认引擎
 	initDefaultEngine()
@@ -127,8 +127,8 @@ func Error(format string, val ...interface{}) {
 }
 
 // Fatal 致命级别的日志
-// @params format string         序列化格式
-// @params val    ...interface{} 待序列化内容
+// 	@params format string         序列化格式
+// 	@params val    ...interface{} 待序列化内容
 func Fatal(format string, val ...interface{}) {
 	// 默认引擎为空时初始化一次默认引擎
 	initDefaultEngine()

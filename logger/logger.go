@@ -15,22 +15,10 @@ import (
 	"time"
 )
 
-// BeLevel 日志级别类型
-type BeLevel uint8
-
-// BeLevelChar 日志界别字符类型
-type BeLevelChar byte
-
-// Engine 引擎接口
-type Engine interface {
-	Init(options interface{}) (Engine, error)                                // 引擎初始化函数
-	Print(t time.Time, lc BeLevelChar, file string, line int, logStr string) // 日志打印函数
-}
-
 // Logger 日志接口
 type Logger interface {
 	SetEngine(engine Engine, options interface{}) error // 引擎设置
-	SetLevel(val ...BeLevel) Logger                     // 日志级别设置
+	SetLevel(val ...Level) Logger                       // 日志级别设置
 	OpenFileLine() Logger                               // 行号打印开启
 	SetSkip(skip uint) Logger                           // 函数栈配置
 	Trace(format string, val ...interface{})            // 通知级别的日志
@@ -41,44 +29,33 @@ type Logger interface {
 	Fatal(format string, val ...interface{})            // 致命级别的日志
 }
 
-// beEnginePrint 引擎打印日志输出方法类型
-type beEnginePrint func(t time.Time, lc BeLevelChar, file string, line int, logStr string)
+// belogPrint 引擎打印日志输出方法类型
+type belogPrint func(t time.Time, lc LevelChar, file string, line int, logStr string)
 
-// beLog 记录器对象
-type beLog struct {
-	isFileLine bool                     // 是否开启文件行号记录
-	skip       uint                     // 需要向上捕获的函数栈层数（该值会自动加2，以便于实例化用户可直接使用）【0-runtime.Caller函数的执行位置（在belog包内），1-Belog各级别方法实现位置（在belog包内），2-belog实例调用各级别日志函数位置，依次类推】
-	engine     map[string]beEnginePrint // 引擎日志输出方法
-	level      map[BeLevel]BeLevelChar  // 需要记录的日志级别字符映射
-}
-
-// 日志保存级别定义
-var (
-	LevelTrace BeLevel = 1 // 通知级别
-	LevelDebug BeLevel = 2 // 调试级别
-	LevelInfo  BeLevel = 3 // 普通级别
-	LevelWarn  BeLevel = 4 // 警告级别
-	LevelError BeLevel = 5 // 错误级别
-	LevelFatal BeLevel = 6 // 致命级别
-)
-
-// levelMap 日志级别字符映射
-var levelMap = map[BeLevel]BeLevelChar{
-	1: 'T',
-	2: 'D',
-	3: 'I',
-	4: 'W',
-	5: 'E',
-	6: 'F',
+// belog 记录器对象
+type belog struct {
+	// 是否开启文件行号记录
+	isFileLine bool
+	// 需要向上捕获的函数栈层数（
+	// 该值会自动加2，以便于实例化用户可直接使用
+	// 【示例】
+	// 0：runtime.Caller函数的执行位置（在belog包内）
+	// 1：belog各级别方法实现位置（在belog包内）
+	// 2：belog实例调用各级别日志函数位置，依此类推】
+	skip uint
+	// 引擎日志输出方法，每一个实例的输出句柄将会缓存在该map中
+	engine map[string]belogPrint
+	// 需要记录的日志级别字符映射
+	level map[Level]LevelChar
 }
 
 // New 初始化一个日志记录器实例
-// @params engine  belogEngine 必选的基础日志引擎
-// @params options interface{} 引擎的配置参数
-// @return         *beLog      日志记录器实例指针
+// 	@params engine  belogEngine 必选的基础日志引擎
+// 	@params options interface{} 引擎的配置参数
+// 	@return         *beLog      日志记录器实例指针
 func New(engine Engine, options interface{}) (Logger, error) {
 	// 初始化日志记录器对象
-	b := new(beLog)
+	b := new(belog)
 	// 初始化引擎
 	err := b.SetEngine(engine, options)
 	if err != nil {
@@ -93,10 +70,10 @@ func New(engine Engine, options interface{}) (Logger, error) {
 }
 
 // SetEngine 设置日志记录引擎
-// @params engine  Engine      引擎对象
-// @params options interface{} 引擎参数
-// @return         error       错误信息
-func (b *beLog) SetEngine(engine Engine, options interface{}) error {
+// 	@params engine  Engine      引擎对象
+// 	@params options interface{} 引擎参数
+// 	@return         error       错误信息
+func (b *belog) SetEngine(engine Engine, options interface{}) error {
 	// 初始化引擎
 	e, err := engine.Init(options)
 	if err != nil {
@@ -104,7 +81,7 @@ func (b *beLog) SetEngine(engine Engine, options interface{}) error {
 	}
 	// map为空需要初始化
 	if b.engine == nil {
-		b.engine = make(map[string]beEnginePrint)
+		b.engine = make(map[string]belogPrint)
 	}
 	// 赋值引擎
 	b.engine[fmt.Sprintf("%T", e)] = e.Print
@@ -112,12 +89,12 @@ func (b *beLog) SetEngine(engine Engine, options interface{}) error {
 }
 
 // SetLevel 设置日志记录保存级别
-// @params val ...belogLevel 任意数量的日志记录级别
-func (b *beLog) SetLevel(val ...BeLevel) Logger {
+// 	@params val ...belogLevel 任意数量的日志记录级别
+func (b *belog) SetLevel(val ...Level) Logger {
 	// 置空，用于覆盖后续输入的级别
 	b.level = nil
 	// 初始化一下
-	b.level = make(map[BeLevel]BeLevelChar)
+	b.level = make(map[Level]LevelChar)
 	// 遍历输入的级别
 	for _, item := range val {
 		b.level[item] = levelMap[item]
@@ -126,97 +103,19 @@ func (b *beLog) SetLevel(val ...BeLevel) Logger {
 }
 
 // OpenFileLine 开启文件行号记录
-func (b *beLog) OpenFileLine() Logger {
+func (b *belog) OpenFileLine() Logger {
 	b.isFileLine = true
 	return b
 }
 
 // SetSkip 配置需要向上捕获的函数栈层数
-func (b *beLog) SetSkip(skip uint) Logger {
+func (b *belog) SetSkip(skip uint) Logger {
 	b.skip = 2 + skip
 	return b
 }
 
-// Trace 通知级别的日志
-// @params format string         序列化格式
-// @params val    ...interface{} 待序列化内容
-func (b *beLog) Trace(format string, val ...interface{}) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelTrace]; !ok { // 当前级别日志不需要记录
-		return
-	}
-	// 执行日志记录
-	logStr := fmt.Sprintf(format, val...)
-	b.print(logStr, b.level[LevelTrace])
-}
-
-// Debug 调试级别的日志
-// @params format string         序列化格式
-// @params val    ...interface{} 待序列化内容
-func (b *beLog) Debug(format string, val ...interface{}) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelDebug]; !ok { // 当前级别日志不需要记录
-		return
-	}
-	// 执行日志记录
-	logStr := fmt.Sprintf(format, val...)
-	b.print(logStr, b.level[LevelDebug])
-}
-
-// Info 普通级别的日志
-// @params format string         序列化格式
-// @params val    ...interface{} 待序列化内容
-func (b *beLog) Info(format string, val ...interface{}) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelInfo]; !ok { // 当前级别日志不需要记录
-		return
-	}
-	// 执行日志记录
-	logStr := fmt.Sprintf(format, val...)
-	b.print(logStr, b.level[LevelInfo])
-}
-
-// Warn 警告级别的日志
-// @params format string         序列化格式
-// @params val    ...interface{} 待序列化内容
-func (b *beLog) Warn(format string, val ...interface{}) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelWarn]; !ok { // 当前级别日志不需要记录
-		return
-	}
-	// 执行日志记录
-	logStr := fmt.Sprintf(format, val...)
-	b.print(logStr, b.level[LevelWarn])
-}
-
-// Error 错误级别的日志
-// @params format string         序列化格式
-// @params val    ...interface{} 待序列化内容
-func (b *beLog) Error(format string, val ...interface{}) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelError]; !ok { // 当前级别日志不需要记录
-		return
-	}
-	// 执行日志记录
-	logStr := fmt.Sprintf(format, val...)
-	b.print(logStr, b.level[LevelError])
-}
-
-// Fatal 致命级别的日志
-// @params format string         序列化格式
-// @params val    ...interface{} 待序列化内容
-func (b *beLog) Fatal(format string, val ...interface{}) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelFatal]; !ok { // 当前级别日志不需要记录
-		return
-	}
-	// 执行日志记录
-	logStr := fmt.Sprintf(format, val...)
-	b.print(logStr, b.level[LevelFatal])
-}
-
 // print 日志集中打印地，日志的真实记录地
-func (b *beLog) print(logstr string, levelChar BeLevelChar) {
+func (b *belog) print(logstr string, levelChar LevelChar) {
 	// 统一当前时间
 	currTime := time.Now()
 	// 文件行号
@@ -234,11 +133,89 @@ func (b *beLog) print(logstr string, levelChar BeLevelChar) {
 	// 遍历引擎，执行输出
 	for _, out := range b.engine {
 		wg.Add(1)
-		go func(ouput beEnginePrint) {
+		go func(ouput belogPrint) {
 			defer wg.Done()
 			ouput(currTime, levelChar, file, line, logstr)
 		}(out)
 	}
 	// 等待所有引擎完成日志记录
 	wg.Wait()
+}
+
+// Trace 通知级别的日志
+// 	@params format string         序列化格式
+// 	@params val    ...interface{} 待序列化内容
+func (b *belog) Trace(format string, val ...interface{}) {
+	// 判断当前级别日志是否需要记录
+	if _, ok := b.level[LevelTrace]; !ok { // 当前级别日志不需要记录
+		return
+	}
+	// 执行日志记录
+	logStr := fmt.Sprintf(format, val...)
+	b.print(logStr, b.level[LevelTrace])
+}
+
+// Debug 调试级别的日志
+// 	@params format string         序列化格式
+// 	@params val    ...interface{} 待序列化内容
+func (b *belog) Debug(format string, val ...interface{}) {
+	// 判断当前级别日志是否需要记录
+	if _, ok := b.level[LevelDebug]; !ok { // 当前级别日志不需要记录
+		return
+	}
+	// 执行日志记录
+	logStr := fmt.Sprintf(format, val...)
+	b.print(logStr, b.level[LevelDebug])
+}
+
+// Info 普通级别的日志
+// 	@params format string         序列化格式
+// 	@params val    ...interface{} 待序列化内容
+func (b *belog) Info(format string, val ...interface{}) {
+	// 判断当前级别日志是否需要记录
+	if _, ok := b.level[LevelInfo]; !ok { // 当前级别日志不需要记录
+		return
+	}
+	// 执行日志记录
+	logStr := fmt.Sprintf(format, val...)
+	b.print(logStr, b.level[LevelInfo])
+}
+
+// Warn 警告级别的日志
+// 	@params format string         序列化格式
+// 	@params val    ...interface{} 待序列化内容
+func (b *belog) Warn(format string, val ...interface{}) {
+	// 判断当前级别日志是否需要记录
+	if _, ok := b.level[LevelWarn]; !ok { // 当前级别日志不需要记录
+		return
+	}
+	// 执行日志记录
+	logStr := fmt.Sprintf(format, val...)
+	b.print(logStr, b.level[LevelWarn])
+}
+
+// Error 错误级别的日志
+// 	@params format string         序列化格式
+// 	@params val    ...interface{} 待序列化内容
+func (b *belog) Error(format string, val ...interface{}) {
+	// 判断当前级别日志是否需要记录
+	if _, ok := b.level[LevelError]; !ok { // 当前级别日志不需要记录
+		return
+	}
+	// 执行日志记录
+	logStr := fmt.Sprintf(format, val...)
+	b.print(logStr, b.level[LevelError])
+}
+
+// Fatal 致命级别的日志
+// 	@params format string         序列化格式
+// 	@params val    ...interface{} 待序列化内容
+func (b *belog) Fatal(format string, val ...interface{}) {
+	// 判断当前级别日志是否需要记录
+	if _, ok := b.level[LevelFatal]; !ok { // 当前级别日志不需要记录
+		return
+	}
+	// 执行日志记录
+	logStr := fmt.Sprintf(format, val...)
+	b.print(logStr, b.level[LevelFatal])
 }

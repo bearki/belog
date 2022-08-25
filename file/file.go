@@ -298,7 +298,7 @@ func (e *Engine) deleteTimeoutLogFile() {
 }
 
 // printFileLog 记录日志到文件
-func (e *Engine) Print(t time.Time, lc logger.BeLevelChar, file string, line int, logStr string) {
+func (e *Engine) Print(t time.Time, lc logger.LevelChar, file string, line int, logStr string) {
 	// 判断是否需要文件行号
 	if len(file) > 0 {
 		// 格式化打印
