@@ -1,5 +1,5 @@
 /**
- *@Title 文件日志记录引擎
+ *@Title 文件日志记录适配器
  *@Desc 文件日志的写入将在这里完成
  *@Author Bearki
  *@DateTime 2021/09/21 19:16
@@ -11,7 +11,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -20,39 +19,54 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bearki/belog/logger"
-	"github.com/bearki/belog/tools"
+	"github.com/bearki/belog/v2/logger"
+	"github.com/bearki/belog/v2/pkg/tool"
 )
 
-// Options 文件引擎参数
+// Options 文件日志适配器参数
 type Options struct {
 
-	// 日志文件储存路径（Default: ${work_dir}/app.log）
+	// 日志文件储存路径
+	//
+	// Default: ${work_dir}/app.log
 	LogPath string
 
-	// 单文件最大容量（Unit:MB, Default:4, Min:1, Max:10000）
+	// 单文件最大容量
+	//
+	// Unit:MB, Default:4, Min:1, Max:10000
 	MaxSize uint16
 
-	// 单文件最大行数（Unit:行, Default:100000, Min:100, Max:100000000）
+	// 单文件最大行数
+	//
+	// Unit:行, Default:100000, Min:100, Max:100000000
 	MaxLines uint64
 
-	// 日志保存天数（Unit: 天, Default: 30）
+	// 日志保存天数
+	//
+	// Unit: 天, Default: 30
 	SaveDay uint16
 
 	// 注意：
-	// 该选项可用于选择是否开启日志文件异步写入（Default: false）
-	// 我建议您开启异步写入而不是使用同步写入
+	//
+	// 该选项可用于选择是否开启日志文件异步写入
+	//
+	// 我建议您开启异步写入而不是使用同步写入，
 	// 同步写入相较于异步写入将会损失50%左右的性能
-	// 你可以使用Async=true && AsyncChanCap=1的组合来实现与同步写入相似的功能
+	//
+	// 你可以使用Async=true && AsyncChanCap=1的组合来实现与同步写入相似的功能，
 	// 这种组合的方式能使性能得到保证
+	//
+	// Default: false
 	Async bool
 
-	// 异步写入管道容量（Default: 1, Min: 1, Max: 100）
+	// 异步写入管道容量
+	//
+	// Default: 1, Min: 1, Max: 100
 	AsyncChanCap uint
 }
 
-// Engine 文件引擎
-type Engine struct {
+// Adapter 文件日志适配器
+type Adapter struct {
 
 	// 外部传入字段
 
@@ -71,11 +85,6 @@ type Engine struct {
 	currIndex     uint32    // 当前日志文件分割后缀标识
 	currSize      uint64    // 当前日志文件大小（单位：byte）
 	currLines     uint64    // 当前日志文件行数
-}
-
-// 创建一个引擎
-func New() *Engine {
-	return new(Engine)
 }
 
 // validity 判断参数有效性
@@ -114,26 +123,25 @@ func (p *Options) validity() {
 	}
 }
 
-// initFileEngine 初始化文件引擎
-func (e *Engine) Init(options interface{}) (logger.Engine, error) {
-	// 类型断言参数
-	data, ok := options.(Options)
-	if !ok {
-		return nil, fmt.Errorf("file log optionsis nil")
-	}
-
+// New 创建文件日志适配器
+//
+// @params options 文件日志适配器参数
+//
+// @return 文件日志适配器实例
+//
+// @return 错误信息
+func New(options Options) (logger.Adapter, error) {
 	// 判断参数有效性
-	data.validity()
-
+	options.validity()
 	// 创建路径的文件夹部分
-	err := os.MkdirAll(filepath.Dir(data.LogPath), 0755)
+	err := os.MkdirAll(filepath.Dir(options.LogPath), 0755)
 	if err != nil {
 		return nil, err
 	}
 
 	// 预处理一些变量
 	// 分割文件夹与文件名部分
-	logDir, logFile := filepath.Split(data.LogPath)
+	logDir, logFile := filepath.Split(options.LogPath)
 	// 截取文件名后缀
 	logExt := filepath.Ext(logFile)
 	// 日志文件名（不含后缀）
@@ -141,22 +149,22 @@ func (e *Engine) Init(options interface{}) (logger.Engine, error) {
 	// 定义MB的字节大小
 	MB := uint64(1024 * 1024)
 
-	// 实例化文件引擎
-	e = new(Engine)
+	// 实例化文件日志适配器
+	e := new(Adapter)
 	// 赋值软链文件名
-	e.logPath = data.LogPath
+	e.logPath = options.LogPath
 	// 赋值文件大小限制
-	e.maxSize = uint64(data.MaxSize) * MB
+	e.maxSize = uint64(options.MaxSize) * MB
 	// 赋值文件最大行数
-	e.maxLines = data.MaxLines
+	e.maxLines = options.MaxLines
 	// 赋值日志保存天数
-	e.saveDay = data.SaveDay
+	e.saveDay = options.SaveDay
 	// 赋值日志文件路径生成格式
 	e.logPathFormat = filepath.Join(logDir, logName+".%s.%03d"+logExt)
 	// 赋值是否为异步写入
-	e.fileWriteAsync = data.Async
+	e.fileWriteAsync = options.Async
 	// 初始化日志写入管道容量
-	e.fileWriteChan = make(chan []byte, data.AsyncChanCap)
+	e.fileWriteChan = make(chan []byte, options.AsyncChanCap)
 	// 筛选出合适的下标日志文件
 	if err = e.selectAvailableFile(); err != nil {
 		return nil, err
@@ -176,44 +184,38 @@ func (e *Engine) Init(options interface{}) (logger.Engine, error) {
 	return e, nil
 }
 
-// printFileLog 记录日志到文件
-func (e *Engine) Print(t time.Time, lc logger.LevelChar, file string, line int, logStr string) {
-	// 不带文件名和行号：
+// Name 用于获取适配器名称
+//
+// 注意：请确保适配器名称不与其他适配器名称冲突
+func (e *Adapter) Name() string {
+	return "belog-file-adapter"
+}
+
+// Print 普通日志打印方法
+//
+// @params logTime 日记记录时间
+//
+// @params level 日志级别
+//
+// @params content 日志内容
+func (e *Adapter) Print(logTime time.Time, level logger.Level, content []byte) {
+	// 不带调用栈：
 	// 2022/09/14 20:28:13.793 [T]  this is a trace log
-	// 日期(10) + 空格(1) + 时间(12) + 空格(1) + 级别(3) + 空格(2) + 日志内容(len(logStr)) + 回车换行(2)
+	// 日期(10) + 空格(1) + 时间(12) + 空格(1) + 级别(3) + 空格(2) + 日志内容(len(content)) + 回车换行(2)
 	//
-	// 默认为不记录文件行号的大小
-	size := 32 + len(logStr)
-
-	// 带文件名和行号：
-	// 2022/09/14 20:28:13.793 [T] [belog_test.go:82]  this is a trace log
-	// 日期(10) + 空格(1) + 时间(12) + 空格(1) + 级别(3) + 空格(1) + 文件名和行数(len(file) + 3 + 行数(5)) + 空格(2) + 日志内容(len(logStr)) + 回车换行(2)
-	//
-	// 是否需要记录文件行号
-	if len(file) > 0 {
-		size += 8 + len(logStr)
-	}
-
+	// 计算需要的大小
+	size := 32 + len(content)
 	// 创建一个指定容量的切片，避免二次扩容
 	logSlice := make([]byte, 0, size)
 	// 追加格式化好的日期和时间
-	logSlice = append(logSlice, tools.StringPtrToBytesPtr(t.Format("2006/01/02 15:04:05.000"))...) // 23个字节
+	logSlice = append(logSlice, tool.StringToBytes(logTime.Format("2006/01/02 15:04:05.000"))...) // 23个字节
 	// 追加级别
-	logSlice = append(logSlice, ' ', '[', lc, ']') // 4个字节
-	// 是否需要记录文件行号
-	if len(file) > 0 {
-		// 追加文件名和行数，en(strconv.FormatInt(int64(line), 10))大于5个字节时，logSlice会发生扩容
-		logSlice = append(logSlice, ' ', '[')                                                         // 2个字节
-		logSlice = append(logSlice, tools.StringPtrToBytesPtr(file)...)                               // len(file)个字节
-		logSlice = append(logSlice, ':')                                                              // 1个字节
-		logSlice = append(logSlice, tools.StringPtrToBytesPtr(strconv.FormatInt(int64(line), 10))...) // 默认5个字节
-		logSlice = append(logSlice, ']')                                                              // 1个字节
-	}
+	logSlice = append(logSlice, ' ', '[', level.GetLevelChar(), ']') // 4个字节
 	// 追加日志内容
-	logSlice = append(logSlice, ' ', ' ')                             // 2个字节
-	logSlice = append(logSlice, tools.StringPtrToBytesPtr(logStr)...) // len(logStr)个字节
+	logSlice = append(logSlice, ' ', ' ')   // 2个字节
+	logSlice = append(logSlice, content...) // len(content)个字节
 	// 追加回车换行
-	logSlice = append(logSlice, '\r', '\n')
+	logSlice = append(logSlice, '\r', '\n') // 2个字节
 
 	// 写入到管道中
 	e.fileWriteChan <- logSlice
@@ -224,7 +226,60 @@ func (e *Engine) Print(t time.Time, lc logger.LevelChar, file string, line int, 
 	}
 }
 
-// getFileLines 获取文件当前行数
+// PrintStack 调用栈日志打印方法
+//
+// @params logTime 日记记录时间
+//
+// @params level 日志级别
+//
+// @params content 日志内容
+//
+// @params fileName 日志记录调用文件路径
+//
+// @params lineNo 日志记录调用文件行号
+//
+// @params methodName 日志记录调用函数名
+func (e *Adapter) PrintStack(logTime time.Time, level logger.Level, content []byte, fileName string, lineNo int, methodName string) {
+	// 带调用栈：
+	// 2022/09/14 20:28:13.793 [T] [belog_test.go:82] [PrintLog]  this is a trace log
+	// 日期(10) + 空格(1) + 时间(12) + 空格(1) + 级别(3) + 空格(1) + 文件名和行数(len(fileName) + 3 + 行数(5)) + 空格(1) + 函数名(2+len(methodName)) + 空格(2) + 日志内容(len(fileName)) + 回车换行(2)
+	//
+	// 裁剪为基础文件名
+	fileName = filepath.Base(fileName)
+	// 计算需要的大小
+	size := 43 + len(content) + len(fileName) + len(methodName)
+	// 创建一个指定容量的切片，避免二次扩容
+	logSlice := make([]byte, 0, size)
+	// 追加格式化好的日期和时间
+	logSlice = append(logSlice, tool.StringToBytes(logTime.Format("2006/01/02 15:04:05.000"))...) // 23个字节
+	// 追加级别
+	logSlice = append(logSlice, ' ', '[', level.GetLevelChar(), ']') // 4个字节
+	// 追加文件名和行号，len(strconv.FormatInt(int64(fileName), 10))大于5个字节时，logSlice会发生扩容
+	logSlice = append(logSlice, ' ', '[')                                                    // 2个字节
+	logSlice = append(logSlice, tool.StringToBytes(fileName)...)                             // len(fileName)个字节
+	logSlice = append(logSlice, ':')                                                         // 1个字节
+	logSlice = append(logSlice, tool.StringToBytes(strconv.FormatInt(int64(lineNo), 10))...) // 默认5个字节
+	logSlice = append(logSlice, ']')                                                         // 1个字节
+	// 追加函数名
+	logSlice = append(logSlice, ' ', '[')                          // 2个字节
+	logSlice = append(logSlice, tool.StringToBytes(methodName)...) // len(methodName)个字节
+	logSlice = append(logSlice, ']')                               // 1个字节
+	// 追加日志内容
+	logSlice = append(logSlice, ' ', ' ')    // 2个字节
+	logSlice = append(logSlice, fileName...) // len(content)个字节
+	// 追加回车换行
+	logSlice = append(logSlice, '\r', '\n') // 2个字节
+
+	// 写入到管道中
+	e.fileWriteChan <- logSlice
+	// 同步时需要等待日志缓冲区被清空
+	if !e.fileWriteAsync {
+		// 空会在写入时进行判断
+		e.fileWriteChan <- nil
+	}
+}
+
+// getFileLines 获取文件当前总行数
 func getFileLines(file *os.File) uint64 {
 	// 行数统计
 	var lines uint64 = 0
@@ -238,7 +293,7 @@ func getFileLines(file *os.File) uint64 {
 }
 
 // selectAvailableFile 选择一个可用的文件
-func (e *Engine) selectAvailableFile() error {
+func (e *Adapter) selectAvailableFile() error {
 	// 赋值当前日期
 	e.currTime = time.Now()
 	// 循环取文件名(单日最多允许存在999个日志文件)
@@ -295,11 +350,11 @@ func (e *Engine) selectAvailableFile() error {
 }
 
 // deleteTimeoutLogFile 过期日志文件删除
-func (e *Engine) deleteTimeoutLogFile() {
+func (e *Adapter) deleteTimeoutLogFile() {
 	// 获取日志储存文件夹部分
 	logDirPath := filepath.Dir(e.logPath)
 	// 打开文件夹
-	logDir, err := ioutil.ReadDir(logDirPath)
+	logDir, err := os.ReadDir(logDirPath)
 	if err != nil {
 		log.Println(err.Error())
 		return
@@ -340,7 +395,7 @@ func (e *Engine) deleteTimeoutLogFile() {
 }
 
 // fileSplit 日志文件是否需要分割
-func (e *Engine) fileSplit() bool {
+func (e *Adapter) fileSplit() bool {
 	// 获取当前时间
 	currTime := time.Now()
 	// 比对一下当前日志文件的日期和当前日期是否是同一天
@@ -370,7 +425,7 @@ func (e *Engine) fileSplit() bool {
 }
 
 // writeFile 写入日志到文件中
-func (e *Engine) writeFile() {
+func (e *Adapter) writeFile() {
 	// 函数结束时的操作
 	defer func() {
 		// 异步执行一次过期日志文件删除

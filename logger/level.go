@@ -25,3 +25,11 @@ var levelMap = map[Level]LevelChar{
 	LevelError: 'E',
 	LevelFatal: 'F',
 }
+
+// GetLevelChar 获取日志级别对应的字符
+func (l Level) GetLevelChar() LevelChar {
+	if c, ok := levelMap[l]; ok {
+		return c
+	}
+	return ' '
+}
