@@ -1,12 +1,15 @@
 package test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/bearki/belog"
 	"github.com/bearki/belog/console"
 	"github.com/bearki/belog/file"
 	"github.com/bearki/belog/logger"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // TestDefultBelog 默认方式输出日志
@@ -52,11 +55,12 @@ func TestNewBelog(t *testing.T) {
 	mylog, err := belog.New(
 		file.New(), // 初始化文件引擎
 		file.Options{
-			LogPath:      "./logs/test_new.log", // 日志储存路径
-			MaxSize:      7,                     // 日志单文件大小
-			SaveDay:      7,                     // 日志保存天数
-			Async:        false,                 // 开启异步写入(main函数提前结束会导致日志未写入)
-			AsyncChanCap: 20,                    // 异步缓存管道容量
+			LogPath:      "../logs/test_new.log", // 日志储存路径
+			MaxSize:      100,                    // 日志单文件大小
+			MaxLines:     1000000,                // 单文件最大行数
+			SaveDay:      7,                      // 日志保存天数
+			Async:        false,                  // 开启异步写入(main函数提前结束会导致日志未写入)
+			AsyncChanCap: 100,                    // 异步缓存管道容量
 		},
 	)
 	if err != nil { // 初始化失败将不能执行任何后续操作，否则会引起恐慌
@@ -73,24 +77,22 @@ func TestNewBelog(t *testing.T) {
 		logger.LevelFatal,
 	).OpenFileLine() // 开启行号记录
 
-	/**********支持多引擎同时输出**********/
-	/*************************************/
-	// err = mylog.SetEngine( // 增加控制台引擎
-	// 	console.New(),
-	// 	nil,
-	// )
-	// if err != nil { // 该错误不影响已添加的引擎
-	// 	mylog.Error("add console engine to log error: %s", err.Error())
-	// }
-	/*************************************/
-
 	// 实例对象记录日志
-	for i := 0; i < 1000000; i++ {
+	for i := 0; i < 1000001; i++ {
 		mylog.Trace("this is a trace log")
-		mylog.Debug("this is a debug log")
-		mylog.Info("this is a info log")
-		mylog.Warn("this is a warn log")
-		mylog.Error("this is a error log")
-		mylog.Fatal("this is a fatal log")
+	}
+}
+
+func TestConsoleLog(t *testing.T) {
+	writeSyncer, _ := os.Create("../logs/zap.log")    //日志文件存放目录
+	encoderConfig := zap.NewProductionEncoderConfig() //指定时间格式
+	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
+	encoder := zapcore.NewConsoleEncoder(encoderConfig)               //获取编码器,NewJSONEncoder()输出json格式，NewConsoleEncoder()输出普通文本格式
+	core := zapcore.NewCore(encoder, writeSyncer, zapcore.DebugLevel) //第三个及之后的参数为写入文件的日志级别,ErrorLevel模式只记录error级别的日志
+	log := zap.New(core, zap.AddCaller())                             //AddCaller()为显示文件名和行号
+
+	for i := 0; i < 1000000; i++ {
+		log.Info("this is a info log")
 	}
 }

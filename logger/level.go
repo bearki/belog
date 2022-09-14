@@ -4,7 +4,7 @@ package logger
 type Level uint8
 
 // LevelChar 日志级别字符类型
-type LevelChar byte
+type LevelChar = byte
 
 // 日志保存级别定义
 var (
