@@ -159,23 +159,24 @@ func (b *belog) print(level Level, content []byte) {
 
 	// 是否需要打印调用栈
 	if b.printCallStack {
+		// 捕获函数栈文件名及执行行数
+		methodPtr, fileName, lineNo, _ := runtime.Caller(int(b.skip))
+		// 遍历适配器，执行输出
+		for _, out := range b.adapterPrintStacks {
+			wg.Add(1)
+			go func(ouput belogPrintStack) {
+				defer wg.Done()
+				ouput(currTime, level, content, fileName, lineNo, runtime.FuncForPC(methodPtr).Name())
+			}(out)
+		}
+
+	} else {
 		// 遍历适配器，执行输出
 		for _, out := range b.adapterPrints {
 			wg.Add(1)
 			go func(ouput belogPrint) {
 				defer wg.Done()
 				ouput(currTime, level, content)
-			}(out)
-		}
-	} else {
-		// 捕获函数栈文件名及执行行数
-		_, fileName, lineNo, _ := runtime.Caller(int(b.skip))
-		// 遍历适配器，执行输出
-		for _, out := range b.adapterPrintStacks {
-			wg.Add(1)
-			go func(ouput belogPrintStack) {
-				defer wg.Done()
-				ouput(currTime, level, content, fileName, lineNo, "")
 			}(out)
 		}
 	}

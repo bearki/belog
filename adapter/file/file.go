@@ -265,8 +265,8 @@ func (e *Adapter) PrintStack(logTime time.Time, level logger.Level, content []by
 	logSlice = append(logSlice, tool.StringToBytes(methodName)...) // len(methodName)个字节
 	logSlice = append(logSlice, ']')                               // 1个字节
 	// 追加日志内容
-	logSlice = append(logSlice, ' ', ' ')    // 2个字节
-	logSlice = append(logSlice, fileName...) // len(content)个字节
+	logSlice = append(logSlice, ' ', ' ')   // 2个字节
+	logSlice = append(logSlice, content...) // len(content)个字节
 	// 追加回车换行
 	logSlice = append(logSlice, '\r', '\n') // 2个字节
 
