@@ -79,23 +79,30 @@ func (e *Adapter) Name() string {
 // @params content 日志内容
 func (e *Adapter) Print(logTime time.Time, level logger.Level, content []byte) {
 	// 不带调用栈：
-	// 2022/09/14 20:28:13.793 [T]  this is a trace log
-	// 日期(10) + 空格(1) + 时间(12) + 空格(1) + 颜色开始(5) + 级别(3) + 颜色结束(4) + 空格(2) + 日志内容(len(content)) + 回车换行(2)
+	// 2022/09/14 20:28:13.793 <colorStart>[T]<colorEnd>  this is a trace log\r\n
+	// ++++++++++_++++++++++++_============+++==========__+++++++++++++++++++____
+	//     10    1    12      1      5      3      4    2       content        2
 	//
+	// const initSize = 10 + 1 + 12 + 1 + 5 + 3 + 4 + 2 + 2 = 40
+
 	// 计算需要的大小
-	size := 41 + len(content)
+	size := 40 + len(content)
 	// 创建一个指定容量的切片，避免二次扩容
 	logSlice := make([]byte, 0, size)
+
 	// 追加格式化好的日期和时间
 	logSlice = append(logSlice, tool.StringToBytes(logTime.Format("2006/01/02 15:04:05.000"))...) // 23个字节
-	// 追加级别对应的颜色
-	logSlice = append(logSlice, GetLevelConsoleColorBytes(level)...)
+	// 追加空格
+	logSlice = append(logSlice, ' ') // 1个字节
+	// 追加颜色开始
+	logSlice = append(logSlice, GetLevelConsoleColorBytes(level)...) // 5个字节
 	// 追加级别
-	logSlice = append(logSlice, ' ', '[', level.GetLevelChar(), ']') // 4个字节
+	logSlice = append(logSlice, '[', level.GetLevelChar(), ']') // 3个字节
 	// 追加颜色结束
 	logSlice = append(logSlice, colorResetBytes...) // 4个字节
+	// 追加空格
+	logSlice = append(logSlice, ' ', ' ') // 2个字节
 	// 追加日志内容
-	logSlice = append(logSlice, ' ', ' ')   // 2个字节
 	logSlice = append(logSlice, content...) // len(content)个字节
 	// 追加回车换行
 	logSlice = append(logSlice, '\r', '\n') // 2个字节
@@ -119,44 +126,58 @@ func (e *Adapter) Print(logTime time.Time, level logger.Level, content []byte) {
 // @params methodName 日志记录调用函数名
 func (e *Adapter) PrintStack(logTime time.Time, level logger.Level, content []byte, fileName []byte, lineNo int, methodName []byte) {
 	// 带调用栈：
-	// 2022/09/14 20:28:13.793 [T] [belog_test.go:82] [PrintLog]  this is a trace log
-	// 日期(10) + 空格(1) + 时间(12) + 空格(1) + 颜色开始(5) +  级别(3) + 颜色结束(4) + 空格(1) + 文件名和行数(len(fileName) + 3 + 行数(5)) + 空格(1) + 函数名(2+len(methodName)) + 空格(2) + 日志内容(len(fileName)) + 回车换行(2)
+	// 2022/09/14 20:28:13.793 <colorStart>[T]<colorEnd> [belog_test.go:82] [PrintLog]  this is a trace log\r\n
+	// ++++++++++_++++++++++++_============+++==========_++++++++++++++++++_++++++++++__+++++++++++++++++++____
+	//     10    1    12      1      5      3      4    1   3+file+line    1 2+method  2   content           2
 	//
-	// 裁剪为基础文件名
+	// const initSize = 10 + 1 + 12 + 1 + 5 + 3 + 4 + 1 + 3 + 1 + 2 + 2 + 2 = 47
+
 	// 裁剪为基础文件名
 	index := bytes.LastIndexByte(fileName, '/')
 	if index > -1 && index+1 < len(fileName) {
 		fileName = fileName[index+1:]
 	}
+
 	// 裁剪为基础函数名
 	index = bytes.LastIndexByte(methodName, '/')
 	if index > 0 && index+1 < len(methodName) {
 		methodName = methodName[index+1:]
 	}
+
+	// 转换行号为切片
+	lineNoBytes := tool.StringToBytes(strconv.Itoa(lineNo))
 	// 计算需要的大小
-	size := 51 + len(content) + len(fileName) + len(methodName)
+	size := 47 + len(fileName) + len(lineNoBytes) + len(methodName) + len(content)
 	// 创建一个指定容量的切片，避免二次扩容
 	logSlice := make([]byte, 0, size)
+
 	// 追加格式化好的日期和时间
 	logSlice = append(logSlice, tool.StringToBytes(logTime.Format("2006/01/02 15:04:05.000"))...) // 23个字节
-	// 追加级别对应的颜色
-	logSlice = append(logSlice, GetLevelConsoleColorBytes(level)...)
+	// 追加空格
+	logSlice = append(logSlice, ' ') // 1个字节
+	// 追加颜色开始
+	logSlice = append(logSlice, GetLevelConsoleColorBytes(level)...) // 5个字节
 	// 追加级别
-	logSlice = append(logSlice, ' ', '[', level.GetLevelChar(), ']') // 4个字节
+	logSlice = append(logSlice, '[', level.GetLevelChar(), ']') // 3个字节
 	// 追加颜色结束
 	logSlice = append(logSlice, colorResetBytes...) // 4个字节
-	// 追加文件名和行号，len(strconv.Itoa(lineNo))大于5个字节时，logSlice会发生扩容
-	logSlice = append(logSlice, ' ', '[')                                    // 2个字节
-	logSlice = append(logSlice, fileName...)                                 // len(fileName)个字节
-	logSlice = append(logSlice, ':')                                         // 1个字节
-	logSlice = append(logSlice, tool.StringToBytes(strconv.Itoa(lineNo))...) // 默认5个字节
-	logSlice = append(logSlice, ']')                                         // 1个字节
+	// 追加空格
+	logSlice = append(logSlice, ' ') // 1个字节
+	// 追加文件名和行号
+	logSlice = append(logSlice, '[')            // 1个字节
+	logSlice = append(logSlice, fileName...)    // len(fileName)个字节
+	logSlice = append(logSlice, ':')            // 1个字节
+	logSlice = append(logSlice, lineNoBytes...) // len(lineNo)个字节
+	logSlice = append(logSlice, ']')            // 1个字节
+	// 追加空格
+	logSlice = append(logSlice, ' ') // 1个字节
 	// 追加函数名
-	logSlice = append(logSlice, ' ', '[')      // 2个字节
+	logSlice = append(logSlice, '[')           // 1个字节
 	logSlice = append(logSlice, methodName...) // len(methodName)个字节
 	logSlice = append(logSlice, ']')           // 1个字节
+	// 追加空格
+	logSlice = append(logSlice, ' ', ' ') // 2个字节
 	// 追加日志内容
-	logSlice = append(logSlice, ' ', ' ')   // 2个字节
 	logSlice = append(logSlice, content...) // len(content)个字节
 	// 追加回车换行
 	logSlice = append(logSlice, '\r', '\n') // 2个字节

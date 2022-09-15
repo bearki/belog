@@ -49,16 +49,18 @@ type Logger interface {
 	PrintCallStack() Logger                // 开启调用栈打印
 	SetSkip(uint) Logger                   // 函数栈配置
 	Flush()                                // 日志缓存刷新
-	Trace(string, ...interface{})          // 通知级别的日志
-	Debug(string, ...interface{})          // 调试级别的日志
-	Info(string, ...interface{})           // 普通级别的日志
-	Warn(string, ...interface{})           // 警告级别的日志
-	Error(string, ...interface{})          // 错误级别的日志
-	Fatal(string, ...interface{})          // 致命级别的日志
-	Tracef(string, ...Field)               // 通知级别的日志（高性能序列化）
-	Debugf(string, ...Field)               // 调试级别的日志（高性能序列化）
-	Infof(string, ...Field)                // 普通级别的日志（高性能序列化）
-	Warnf(string, ...Field)                // 警告级别的日志（高性能序列化）
-	Errorf(string, ...Field)               // 错误级别的日志（高性能序列化）
-	Fatalf(string, ...Field)               // 致命级别的日志（高性能序列化）
+
+	Trace(string, ...interface{}) // 通知级别的日志
+	Debug(string, ...interface{}) // 调试级别的日志
+	Info(string, ...interface{})  // 普通级别的日志
+	Warn(string, ...interface{})  // 警告级别的日志
+	Error(string, ...interface{}) // 错误级别的日志
+	Fatal(string, ...interface{}) // 致命级别的日志
+
+	Tracef(string, ...Field) // 通知级别的日志（高性能序列化）
+	Debugf(string, ...Field) // 调试级别的日志（高性能序列化）
+	Infof(string, ...Field)  // 普通级别的日志（高性能序列化）
+	Warnf(string, ...Field)  // 警告级别的日志（高性能序列化）
+	Errorf(string, ...Field) // 错误级别的日志（高性能序列化）
+	Fatalf(string, ...Field) // 致命级别的日志（高性能序列化）
 }

@@ -134,7 +134,7 @@ func (b *belog) PrintCallStack() Logger {
 //
 // @return 日志记录器实例
 func (b *belog) SetSkip(skip uint) Logger {
-	b.skip = 2 + skip
+	b.skip = 3 + skip
 	return b
 }
 
@@ -209,14 +209,16 @@ func (b *belog) print(level Level, content []byte) {
 	wg.Wait()
 }
 
-// Trace 通知级别的日志
+// preCheck 常规日志前置判断
+//
+// @params level 日志级别
 //
 // @params format 序列化格式或内容
 //
 // @params val 待序列化内容
-func (b *belog) Trace(format string, val ...interface{}) {
+func (b *belog) preCheck(level Level, format string, val ...interface{}) {
 	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelTrace]; !ok {
+	if _, ok := b.level[level]; !ok {
 		// 当前级别日志不需要记录
 		return
 	}
@@ -230,25 +232,22 @@ func (b *belog) Trace(format string, val ...interface{}) {
 	}
 }
 
+// Trace 通知级别的日志
+//
+// @params format 序列化格式或内容
+//
+// @params val 待序列化内容
+func (b *belog) Trace(format string, val ...interface{}) {
+	b.preCheck(LevelTrace, format, val...)
+}
+
 // Debug 调试级别的日志
 //
 // @params format 序列化格式或内容
 //
 // @params val 待序列化内容
 func (b *belog) Debug(format string, val ...interface{}) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelDebug]; !ok {
-		// 当前级别日志不需要记录
-		return
-	}
-	// 是否使用默认编码器
-	if b.encoder == nil {
-		// 使用默认编码器
-		b.print(LevelDebug, tool.StringToBytes(defaultEncoder(format, val...)))
-	} else {
-		// 使用自定义编码器
-		b.print(LevelDebug, tool.StringToBytes(b.encoder(format, val...)))
-	}
+	b.preCheck(LevelDebug, format, val...)
 }
 
 // Info 普通级别的日志
@@ -257,19 +256,7 @@ func (b *belog) Debug(format string, val ...interface{}) {
 //
 // @params val 待序列化内容
 func (b *belog) Info(format string, val ...interface{}) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelInfo]; !ok {
-		// 当前级别日志不需要记录
-		return
-	}
-	// 是否使用默认编码器
-	if b.encoder == nil {
-		// 使用默认编码器
-		b.print(LevelInfo, tool.StringToBytes(defaultEncoder(format, val...)))
-	} else {
-		// 使用自定义编码器
-		b.print(LevelInfo, tool.StringToBytes(b.encoder(format, val...)))
-	}
+	b.preCheck(LevelInfo, format, val...)
 }
 
 // Warn 警告级别的日志
@@ -278,19 +265,7 @@ func (b *belog) Info(format string, val ...interface{}) {
 //
 // @params val 待序列化内容
 func (b *belog) Warn(format string, val ...interface{}) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelWarn]; !ok {
-		// 当前级别日志不需要记录
-		return
-	}
-	// 是否使用默认编码器
-	if b.encoder == nil {
-		// 使用默认编码器
-		b.print(LevelWarn, tool.StringToBytes(defaultEncoder(format, val...)))
-	} else {
-		// 使用自定义编码器
-		b.print(LevelWarn, tool.StringToBytes(b.encoder(format, val...)))
-	}
+	b.preCheck(LevelWarn, format, val...)
 }
 
 // Error 错误级别的日志
@@ -299,19 +274,7 @@ func (b *belog) Warn(format string, val ...interface{}) {
 //
 // @params val 待序列化内容
 func (b *belog) Error(format string, val ...interface{}) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelError]; !ok {
-		// 当前级别日志不需要记录
-		return
-	}
-	// 是否使用默认编码器
-	if b.encoder == nil {
-		// 使用默认编码器
-		b.print(LevelError, tool.StringToBytes(defaultEncoder(format, val...)))
-	} else {
-		// 使用自定义编码器
-		b.print(LevelError, tool.StringToBytes(b.encoder(format, val...)))
-	}
+	b.preCheck(LevelError, format, val...)
 }
 
 // Fatal 致命级别的日志
@@ -320,25 +283,19 @@ func (b *belog) Error(format string, val ...interface{}) {
 //
 // @params val 待序列化内容
 func (b *belog) Fatal(format string, val ...interface{}) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelFatal]; !ok {
-		// 当前级别日志不需要记录
-		return
-	}
-	// 是否使用默认编码器
-	if b.encoder == nil {
-		// 使用默认编码器
-		b.print(LevelFatal, tool.StringToBytes(defaultEncoder(format, val...)))
-	} else {
-		// 使用自定义编码器
-		b.print(LevelFatal, tool.StringToBytes(b.encoder(format, val...)))
-	}
+	b.preCheck(LevelFatal, format, val...)
 }
 
-// Tracef 通知级别的日志（高性能序列化）
-func (b *belog) Tracef(message string, val ...Field) {
+// preCheck 高性能日志前置判断和序列化
+//
+// @params level 日志级别
+//
+// @params message 日志消息
+//
+// @params val 字段信息
+func (b *belog) preCheckf(level Level, message string, val ...Field) {
 	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelTrace]; !ok {
+	if _, ok := b.level[level]; !ok {
 		// 当前级别日志不需要记录
 		return
 	}
@@ -368,85 +325,35 @@ func (b *belog) Tracef(message string, val ...Field) {
 
 	msg = append(msg, '}')
 	// 执行打印
-	b.print(LevelTrace, msg)
+	b.print(level, msg)
+}
+
+// Tracef 通知级别的日志（高性能序列化）
+func (b *belog) Tracef(message string, val ...Field) {
+	b.preCheckf(LevelTrace, message, val...)
 }
 
 // Debugf 调试级别的日志（高性能序列化）
 func (b *belog) Debugf(message string, val ...Field) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelDebug]; !ok {
-		// 当前级别日志不需要记录
-		return
-	}
-	// 拼接为byte
-	msg := tool.StringToBytes(message)
-	for _, v := range val {
-		msg = append(msg, v.Bytes()...)
-	}
-	// 执行打印
-	b.print(LevelDebug, msg)
+	b.preCheckf(LevelDebug, message, val...)
 }
 
 // Infof 普通级别的日志（高性能序列化）
 func (b *belog) Infof(message string, val ...Field) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelInfo]; !ok {
-		// 当前级别日志不需要记录
-		return
-	}
-	// 拼接为byte
-	msg := tool.StringToBytes(message)
-	for _, v := range val {
-		msg = append(msg, v.Bytes()...)
-	}
-	// 执行打印
-	b.print(LevelInfo, msg)
+	b.preCheckf(LevelInfo, message, val...)
 }
 
 // Warnf 警告级别的日志（高性能序列化）
 func (b *belog) Warnf(message string, val ...Field) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelWarn]; !ok {
-		// 当前级别日志不需要记录
-		return
-	}
-	// 拼接为byte
-	msg := tool.StringToBytes(message)
-	for _, v := range val {
-		msg = append(msg, v.Bytes()...)
-	}
-	// 执行打印
-	b.print(LevelWarn, msg)
+	b.preCheckf(LevelWarn, message, val...)
 }
 
 // Errorf 错误级别的日志（高性能序列化）
 func (b *belog) Errorf(message string, val ...Field) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelError]; !ok {
-		// 当前级别日志不需要记录
-		return
-	}
-	// 拼接为byte
-	msg := tool.StringToBytes(message)
-	for _, v := range val {
-		msg = append(msg, v.Bytes()...)
-	}
-	// 执行打印
-	b.print(LevelError, msg)
+	b.preCheckf(LevelError, message, val...)
 }
 
 // Fatalf 致命级别的日志（高性能序列化）
 func (b *belog) Fatalf(message string, val ...Field) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelFatal]; !ok {
-		// 当前级别日志不需要记录
-		return
-	}
-	// 拼接为byte
-	msg := tool.StringToBytes(message)
-	for _, v := range val {
-		msg = append(msg, v.Bytes()...)
-	}
-	// 执行打印
-	b.print(LevelFatal, msg)
+	b.preCheckf(LevelFatal, message, val...)
 }

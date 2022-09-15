@@ -1,9 +1,7 @@
 package test
 
 import (
-	"fmt"
 	"testing"
-	"time"
 
 	"github.com/bearki/belog/v2"
 	"github.com/bearki/belog/v2/adapter/console"
@@ -66,19 +64,17 @@ func TestNewFileBelog(t *testing.T) {
 
 	// 开启调用栈打印
 	mylog.PrintCallStack()
-
-	tt := time.Now()
 	// 实例对象记录日志
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 1000000; i++ {
 		mylog.Tracef(
 			"this is a trace log",
 			logger.Intf("value", i),
 			logger.Intf("index", i),
 			logger.Intf("bba", i),
 		)
+		mylog.Trace("this is a trace log, value: %d, index: %v, bba: %v", i, i, i)
 	}
 	mylog.Flush()
-	fmt.Println(time.Since(tt).Milliseconds())
 }
 
 // TestNewFileBelog 实例方式输出文件和控制台日志

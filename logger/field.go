@@ -8,26 +8,36 @@ import (
 
 // Field 字段序列化接口
 type Field interface {
-	Bytes() []byte
+	Bytes() []byte // 获取字段信息的字节切片
 }
 
 type intf struct {
-	name []byte
-	val  []byte
+	content []byte
 }
 
+// Bytes 获取字段信息的字节切片
 func (v intf) Bytes() []byte {
-	tmp := make([]byte, 0, len(v.name)+len(v.val)+3)
-	tmp = append(tmp, '"')
-	tmp = append(tmp, v.name...)
-	tmp = append(tmp, '"', ':', ' ')
-	tmp = append(tmp, v.val...)
-	return tmp
+	return v.content
 }
 
+// Intf 格式化int类型字段信息
+//
+// 输入值:
+//
+//	{
+//	  name: []byte("index"),
+//	  val: []byte(20),
+//	}
+//
+// 最终格式:
+// []byte("\"index\"": 20")
 func Intf(name string, val int) Field {
-	return &intf{
-		name: tool.StringToBytes(name),
-		val:  tool.StringToBytes(strconv.Itoa(val)),
-	}
+	valStr := strconv.Itoa(val)
+	field := new(intf)
+	field.content = make([]byte, 0, 4+len(name)+len(valStr))
+	field.content = append(field.content, '"')
+	field.content = append(field.content, tool.StringToBytes(name)...)
+	field.content = append(field.content, '"', ':', ' ')
+	field.content = append(field.content, tool.StringToBytes(valStr)...)
+	return field
 }

@@ -1,5 +1,5 @@
 /**
- *@Title 文件日志记录适配器
+ *@Title 文件日志适配器
  *@Desc 文件日志的写入将在这里完成
  *@Author Bearki
  *@DateTime 2021/09/21 19:16
@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -171,7 +172,7 @@ func New(options Options) (logger.Adapter, error) {
 	// 赋值日志保存天数
 	e.saveDay = options.SaveDay
 	// 赋值日志文件路径生成格式
-	e.logPathFormat = filepath.Join(logDir, logName+".%s.%03d"+logExt)
+	e.logPathFormat = filepath.Join(logDir, logName+".%s.%d"+logExt)
 	// 赋值是否为异步写入
 	e.fileWriteAsync = options.Async
 	// 初始化日志写入管道容量
@@ -214,19 +215,26 @@ func (e *Adapter) Name() string {
 // @params content 日志内容
 func (e *Adapter) Print(logTime time.Time, level logger.Level, content []byte) {
 	// 不带调用栈：
-	// 2022/09/14 20:28:13.793 [T]  this is a trace log
-	// 日期(10) + 空格(1) + 时间(12) + 空格(1) + 级别(3) + 空格(2) + 日志内容(len(content)) + 回车换行(2)
+	// 2022/09/14 20:28:13.793 [T]  this is a trace log\r\n
+	// ++++++++++_++++++++++++_+++__+++++++++++++++++++____
+	//     10    1    12      1 3 2   content           2
 	//
+	// const initSize = 10 + 1 + 12 + 1 + 3 + 2 + 2 = 31
+
 	// 计算需要的大小
-	size := 32 + len(content)
+	size := 31 + len(content)
 	// 创建一个指定容量的切片，避免二次扩容
 	logSlice := make([]byte, 0, size)
+
 	// 追加格式化好的日期和时间
 	logSlice = append(logSlice, tool.StringToBytes(logTime.Format("2006/01/02 15:04:05.000"))...) // 23个字节
+	// 追加空格
+	logSlice = append(logSlice, ' ') // 1个字节
 	// 追加级别
-	logSlice = append(logSlice, ' ', '[', level.GetLevelChar(), ']') // 4个字节
+	logSlice = append(logSlice, '[', level.GetLevelChar(), ']') // 3个字节
+	// 追加空格
+	logSlice = append(logSlice, ' ', ' ') // 2个字节
 	// 追加日志内容
-	logSlice = append(logSlice, ' ', ' ')   // 2个字节
 	logSlice = append(logSlice, content...) // len(content)个字节
 	// 追加回车换行
 	logSlice = append(logSlice, '\r', '\n') // 2个字节
@@ -250,39 +258,54 @@ func (e *Adapter) Print(logTime time.Time, level logger.Level, content []byte) {
 // @params methodName 日志记录调用函数名
 func (e *Adapter) PrintStack(logTime time.Time, level logger.Level, content []byte, fileName []byte, lineNo int, methodName []byte) {
 	// 带调用栈：
-	// 2022/09/14 20:28:13.793 [T] [belog_test.go:82] [PrintLog]  this is a trace log
-	// 日期(10) + 空格(1) + 时间(12) + 空格(1) + 级别(3) + 空格(1) + 文件名和行数(len(fileName) + 3 + 行数(5)) + 空格(1) + 函数名(2+len(methodName)) + 空格(2) + 日志内容(len(fileName)) + 回车换行(2)
+	// 2022/09/14 20:28:13.793 [T] [belog_test.go:82] [PrintLog]  this is a trace log\r\n
+	// ++++++++++_++++++++++++_+++_++++++++++++++++++_++++++++++__+++++++++++++++++++____
+	//     10    1    12      1 3 1   3+file+line    1 2+method  2   content           2
 	//
+	// const initSize = 10 + 1 + 12 + 1 + 3 + 1 + 3 + 1 + 2 + 2 + 2 = 38
+
 	// 裁剪为基础文件名
 	index := bytes.LastIndexByte(fileName, '/')
 	if index > -1 && index+1 < len(fileName) {
 		fileName = fileName[index+1:]
 	}
+
 	// 裁剪为基础函数名
 	index = bytes.LastIndexByte(methodName, '/')
-	if index > -1 && index+1 < len(methodName) {
+	if index > 0 && index+1 < len(methodName) {
 		methodName = methodName[index+1:]
 	}
+
+	// 转换行号为切片
+	lineNoBytes := tool.StringToBytes(strconv.Itoa(lineNo))
 	// 计算需要的大小
-	size := 43 + len(content) + len(fileName) + len(methodName)
+	size := 38 + len(fileName) + len(lineNoBytes) + len(methodName) + len(content)
 	// 创建一个指定容量的切片，避免二次扩容
 	logSlice := make([]byte, 0, size)
+
 	// 追加格式化好的日期和时间
 	logSlice = append(logSlice, tool.StringToBytes(logTime.Format("2006/01/02 15:04:05.000"))...) // 23个字节
+	// 追加空格
+	logSlice = append(logSlice, ' ') // 1个字节
 	// 追加级别
-	logSlice = append(logSlice, ' ', '[', level.GetLevelChar(), ']') // 4个字节
-	// 追加文件名和行号，len(strconv.Itoa(lineNo))大于5个字节时，logSlice会发生扩容
-	logSlice = append(logSlice, ' ', '[')                                    // 2个字节
-	logSlice = append(logSlice, fileName...)                                 // len(fileName)个字节
-	logSlice = append(logSlice, ':')                                         // 1个字节
-	logSlice = append(logSlice, tool.StringToBytes(strconv.Itoa(lineNo))...) // 默认5个字节
-	logSlice = append(logSlice, ']')                                         // 1个字节
+	logSlice = append(logSlice, '[', level.GetLevelChar(), ']') // 3个字节
+	// 追加空格
+	logSlice = append(logSlice, ' ') // 1个字节
+	// 追加文件名和行号
+	logSlice = append(logSlice, '[')            // 1个字节
+	logSlice = append(logSlice, fileName...)    // len(fileName)个字节
+	logSlice = append(logSlice, ':')            // 1个字节
+	logSlice = append(logSlice, lineNoBytes...) // len(lineNo)个字节
+	logSlice = append(logSlice, ']')            // 1个字节
+	// 追加空格
+	logSlice = append(logSlice, ' ') // 1个字节
 	// 追加函数名
-	logSlice = append(logSlice, ' ', '[')      // 2个字节
+	logSlice = append(logSlice, '[')           // 1个字节
 	logSlice = append(logSlice, methodName...) // len(methodName)个字节
 	logSlice = append(logSlice, ']')           // 1个字节
+	// 追加空格
+	logSlice = append(logSlice, ' ', ' ') // 2个字节
 	// 追加日志内容
-	logSlice = append(logSlice, ' ', ' ')   // 2个字节
 	logSlice = append(logSlice, content...) // len(content)个字节
 	// 追加回车换行
 	logSlice = append(logSlice, '\r', '\n') // 2个字节
@@ -307,8 +330,28 @@ func (e *Adapter) Flush() {
 	<-e.flushOverSignal
 }
 
-// getFileLines 获取文件当前总行数
-func getFileLines(file *os.File) uint64 {
+// openFileGetLines 打开文件并获取文件总行数
+//
+// @params fileName 文件路径
+//
+// @params flag 文件打开模式
+//
+// @params closeFile 结束时是否关闭文件
+//
+// @return 文件句柄
+//
+// @return 总行数
+//
+// @return 异常信息
+func openFileGetLines(fileName string, flag int, closeFile bool) (*os.File, uint64, error) {
+	// 打开文件
+	file, err := os.OpenFile(fileName, flag, 0666)
+	if err != nil {
+		return nil, 0, err
+	}
+	if closeFile {
+		defer file.Close()
+	}
 	// 行数统计
 	var lines uint64 = 0
 	// 获取文件行数
@@ -317,64 +360,54 @@ func getFileLines(file *os.File) uint64 {
 		lines++
 	}
 	// 返回行数
-	return lines
+	return file, lines, nil
 }
 
 // selectAvailableFile 选择一个可用的文件
 func (e *Adapter) selectAvailableFile() error {
 	// 赋值当前日期
 	e.currTime = time.Now()
-	// 循环取文件名(单日最多允许存在999个日志文件)
-	for i := 1; i <= 999; i++ {
-		ok, err := func(j int) (bool, error) {
-			// 赋值文件分割后缀标识
-			e.currIndex = uint32(i)
-			// 以当前日期命名文件名
-			e.currLogPath = fmt.Sprintf(e.logPathFormat, e.currTime.Format("2006-01-02"), i)
+	// 循环取文件名
+	for i := 1; i <= math.MaxInt32; i++ {
+		// 赋值文件分割后缀标识
+		e.currIndex = uint32(i)
+		// 以当前日期命名文件名
+		e.currLogPath = fmt.Sprintf(e.logPathFormat, e.currTime.Format("2006-01-02"), i)
 
-			// 判断拼接出来的文件状态
-			file, err := os.Open(e.currLogPath)
-			if err != nil {
-				if os.IsNotExist(err) {
-					// 文件不存在，则该文件可用，跳出循环
-					return true, nil
-				}
-				// 文件存在，但获取信息错误
-				return false, err
-			}
-			defer file.Close()
-
-			// 判断文件大小是否超过限制
-			fileStat, _ := file.Stat()
-			if fileStat.Size() >= int64(e.maxSize) {
-				// 超过了限制，递增后缀标识
-				return false, nil
-			}
-
-			// 判断文件是否超过了最大行数
-			lines := getFileLines(file)
-			if lines >= e.maxLines {
-				// 超过了限制，递增后缀标识
-				return false, nil
-			}
-
-			// 文件可用
-			return true, nil
-		}(i)
-
-		// 是否异常
+		// 先获取文件信息
+		fileInfo, err := os.Stat(e.currLogPath)
 		if err != nil {
+			if os.IsNotExist(err) {
+				// 文件不存在，则该文件可用，跳出循环
+				return nil
+			}
+			// 文件存在，但获取信息错误
 			return err
 		}
 
-		// 文件可用
-		if ok {
-			return nil
+		// 判断文件大小是否超过限制
+		if fileInfo.Size() >= int64(e.maxSize) {
+			// 超过了限制，递增后缀标识
+			continue
 		}
+
+		// 判断文件是否超过了最大行数
+		_, lines, err := openFileGetLines(e.currLogPath, os.O_RDONLY, true)
+		if err != nil {
+			// 文件异常
+			return err
+		}
+		if lines >= e.maxLines {
+			// 超过了限制，递增后缀标识
+			continue
+		}
+
+		// 文件可用
+		return nil
 	}
 
 	// 全部文件不可用
-	return errors.New("files from 0 to 999 are not available")
+	return errors.New("no available files found")
 }
 
 // deleteTimeoutLogFile 过期日志文件删除
@@ -460,14 +493,14 @@ func (e *Adapter) writeFile() {
 		go e.deleteTimeoutLogFile()
 	}()
 
-	// 移除软链
+	// 移除硬连接
 	err := os.RemoveAll(e.logPath)
 	if err != nil {
 		log.Fatalln("remove file error: " + err.Error())
 	}
 
-	// 创建或追加文件
-	file, err := os.OpenFile(e.currLogPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_SYNC, 0666)
+	// 创建或追加文件，并获取文件总行数
+	file, lines, err := openFileGetLines(e.currLogPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_SYNC, false)
 	if err != nil {
 		log.Fatalln("open file error: " + err.Error())
 	}
@@ -480,7 +513,7 @@ func (e *Adapter) writeFile() {
 	fileStat, _ := file.Stat()
 	e.currSize = uint64(fileStat.Size())
 	// 赋值当前文件行数
-	e.currLines = getFileLines(file)
+	e.currLines = lines
 
 	// 创建写入缓冲区
 	writer := bufio.NewWriter(file)
@@ -488,9 +521,9 @@ func (e *Adapter) writeFile() {
 		writer.Flush() // 结束时刷新到文件中
 	}()
 
-	// 创建软链
+	// 创建硬连接
 	err = os.Link(e.currLogPath, e.logPath)
-	if err != nil {
+	if err != nil && !errors.Is(err, os.ErrExist) {
 		log.Fatalln("create file link error: " + err.Error())
 	}
 
