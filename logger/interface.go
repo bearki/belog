@@ -31,5 +31,34 @@ type Adapter interface {
 	// @params lineNo 日志记录调用文件行号
 	//
 	// @params methodName 日志记录调用函数名
-	PrintStack(logTime time.Time, level Level, content []byte, fileName string, lineNo int, methodName string)
+	PrintStack(logTime time.Time, level Level, content []byte, fileName []byte, lineNo int, methodName []byte)
+
+	// Flush 日志缓存刷新
+	//
+	// 用于日志缓冲区刷新,
+	// 接收到该通知后需要立即将缓冲区中的日志持久化,
+	// 因为程序很有可能将在短时间内退出
+	Flush()
+}
+
+// Logger 日志接口
+type Logger interface {
+	SetAdapter(Adapter) error              // 适配器设置
+	SetLevel(...Level) Logger              // 日志级别设置
+	SetEncoder(encoder EncoderFunc) Logger // 自定义格式化编码器
+	PrintCallStack() Logger                // 开启调用栈打印
+	SetSkip(uint) Logger                   // 函数栈配置
+	Flush()                                // 日志缓存刷新
+	Trace(string, ...interface{})          // 通知级别的日志
+	Debug(string, ...interface{})          // 调试级别的日志
+	Info(string, ...interface{})           // 普通级别的日志
+	Warn(string, ...interface{})           // 警告级别的日志
+	Error(string, ...interface{})          // 错误级别的日志
+	Fatal(string, ...interface{})          // 致命级别的日志
+	Tracef(string, ...Field)               // 通知级别的日志（高性能序列化）
+	Debugf(string, ...Field)               // 调试级别的日志（高性能序列化）
+	Infof(string, ...Field)                // 普通级别的日志（高性能序列化）
+	Warnf(string, ...Field)                // 警告级别的日志（高性能序列化）
+	Errorf(string, ...Field)               // 错误级别的日志（高性能序列化）
+	Fatalf(string, ...Field)               // 致命级别的日志（高性能序列化）
 }

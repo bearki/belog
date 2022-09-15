@@ -1,7 +1,9 @@
 package test
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/bearki/belog/v2"
 	"github.com/bearki/belog/v2/adapter/console"
@@ -36,7 +38,7 @@ func TestNewFileBelog(t *testing.T) {
 	// 初始化文件日志适配器
 	fielAdapter, err := file.New(file.Options{
 		LogPath:      "../logs/test_new.log", // 日志储存路径
-		MaxSize:      100,                    // 日志单文件大小
+		MaxSize:      200,                    // 日志单文件大小
 		MaxLines:     1000000,                // 单文件最大行数
 		SaveDay:      7,                      // 日志保存天数
 		Async:        true,                   // 开启异步写入(main函数提前结束会导致日志未写入)
@@ -65,10 +67,18 @@ func TestNewFileBelog(t *testing.T) {
 	// 开启调用栈打印
 	mylog.PrintCallStack()
 
+	tt := time.Now()
 	// 实例对象记录日志
-	for i := 0; i < 1000000; i++ {
-		mylog.Trace("this is a trace log")
+	for i := 0; i < 100000; i++ {
+		mylog.Tracef(
+			"this is a trace log",
+			logger.Intf("value", i),
+			logger.Intf("index", i),
+			logger.Intf("bba", i),
+		)
 	}
+	mylog.Flush()
+	fmt.Println(time.Since(tt).Milliseconds())
 }
 
 // TestNewFileBelog 实例方式输出文件和控制台日志

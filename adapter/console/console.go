@@ -8,8 +8,8 @@
 package console
 
 import (
+	"bytes"
 	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -117,13 +117,22 @@ func (e *Adapter) Print(logTime time.Time, level logger.Level, content []byte) {
 // @params lineNo 日志记录调用文件行号
 //
 // @params methodName 日志记录调用函数名
-func (e *Adapter) PrintStack(logTime time.Time, level logger.Level, content []byte, fileName string, lineNo int, methodName string) {
+func (e *Adapter) PrintStack(logTime time.Time, level logger.Level, content []byte, fileName []byte, lineNo int, methodName []byte) {
 	// 带调用栈：
 	// 2022/09/14 20:28:13.793 [T] [belog_test.go:82] [PrintLog]  this is a trace log
 	// 日期(10) + 空格(1) + 时间(12) + 空格(1) + 颜色开始(5) +  级别(3) + 颜色结束(4) + 空格(1) + 文件名和行数(len(fileName) + 3 + 行数(5)) + 空格(1) + 函数名(2+len(methodName)) + 空格(2) + 日志内容(len(fileName)) + 回车换行(2)
 	//
 	// 裁剪为基础文件名
-	fileName = filepath.Base(fileName)
+	// 裁剪为基础文件名
+	index := bytes.LastIndexByte(fileName, '/')
+	if index > -1 && index+1 < len(fileName) {
+		fileName = fileName[index+1:]
+	}
+	// 裁剪为基础函数名
+	index = bytes.LastIndexByte(methodName, '/')
+	if index > 0 && index+1 < len(methodName) {
+		methodName = methodName[index+1:]
+	}
 	// 计算需要的大小
 	size := 51 + len(content) + len(fileName) + len(methodName)
 	// 创建一个指定容量的切片，避免二次扩容
@@ -136,22 +145,28 @@ func (e *Adapter) PrintStack(logTime time.Time, level logger.Level, content []by
 	logSlice = append(logSlice, ' ', '[', level.GetLevelChar(), ']') // 4个字节
 	// 追加颜色结束
 	logSlice = append(logSlice, colorResetBytes...) // 4个字节
-	// 追加文件名和行号，len(strconv.FormatInt(int64(fileName), 10))大于5个字节时，logSlice会发生扩容
-	logSlice = append(logSlice, ' ', '[')                                                    // 2个字节
-	logSlice = append(logSlice, tool.StringToBytes(fileName)...)                             // len(fileName)个字节
-	logSlice = append(logSlice, ':')                                                         // 1个字节
-	logSlice = append(logSlice, tool.StringToBytes(strconv.FormatInt(int64(lineNo), 10))...) // 默认5个字节
-	logSlice = append(logSlice, ']')                                                         // 1个字节
+	// 追加文件名和行号，len(strconv.Itoa(lineNo))大于5个字节时，logSlice会发生扩容
+	logSlice = append(logSlice, ' ', '[')                                    // 2个字节
+	logSlice = append(logSlice, fileName...)                                 // len(fileName)个字节
+	logSlice = append(logSlice, ':')                                         // 1个字节
+	logSlice = append(logSlice, tool.StringToBytes(strconv.Itoa(lineNo))...) // 默认5个字节
+	logSlice = append(logSlice, ']')                                         // 1个字节
 	// 追加函数名
-	logSlice = append(logSlice, ' ', '[')                          // 2个字节
-	logSlice = append(logSlice, tool.StringToBytes(methodName)...) // len(methodName)个字节
-	logSlice = append(logSlice, ']')                               // 1个字节
+	logSlice = append(logSlice, ' ', '[')      // 2个字节
+	logSlice = append(logSlice, methodName...) // len(methodName)个字节
+	logSlice = append(logSlice, ']')           // 1个字节
 	// 追加日志内容
-	logSlice = append(logSlice, ' ', ' ')    // 2个字节
-	logSlice = append(logSlice, fileName...) // len(content)个字节
+	logSlice = append(logSlice, ' ', ' ')   // 2个字节
+	logSlice = append(logSlice, content...) // len(content)个字节
 	// 追加回车换行
 	logSlice = append(logSlice, '\r', '\n') // 2个字节
 
 	// 打印到标准输出
 	os.Stdout.Write(logSlice)
 }
+
+// Flush 日志缓存刷新
+//
+// 用于日志缓冲区刷新
+// 接收到该通知后需要立即将缓冲区中的日志持久化
+func (e *Adapter) Flush() {}

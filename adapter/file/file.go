@@ -9,6 +9,7 @@ package file
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"log"
@@ -17,6 +18,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bearki/belog/v2/logger"
@@ -79,12 +81,21 @@ type Adapter struct {
 
 	// 内部字段
 
-	logPathFormat string    // 日志文件路径格式
-	currLogPath   string    // 日志文件源文件路径
-	currTime      time.Time // 当前日志文件使用的日期
-	currIndex     uint32    // 当前日志文件分割后缀标识
-	currSize      uint64    // 当前日志文件大小（单位：byte）
-	currLines     uint64    // 当前日志文件行数
+	logPathFormat    string        // 日志文件路径格式
+	currLogPath      string        // 日志文件源文件路径
+	currTime         time.Time     // 当前日志文件使用的日期
+	currIndex        uint32        // 当前日志文件分割后缀标识
+	currSize         uint64        // 当前日志文件大小（单位：byte）
+	currLines        uint64        // 当前日志文件行数
+	flushMutex       sync.Mutex    // 刷新操作锁
+	flushStartSignal chan struct{} // 刷新开始信号
+	flushOverSignal  chan struct{} // 刷新结束信号
+}
+
+// printWarningMsg 打印警告信息
+func printWarningMsg(msg string) {
+	// _, _ = os.Stderr.WriteString(msg + "\r\n")
+	_, _ = os.Stdout.WriteString(msg + "\r\n")
 }
 
 // validity 判断参数有效性
@@ -94,28 +105,28 @@ func (p *Options) validity() {
 	// 判断路径是否为空
 	if len(p.LogPath) <= 0 {
 		p.LogPath = "app.log"
-		log.Println("`logPath` is null, use the default value `app.log`")
+		printWarningMsg("`logPath` is null, use the default value `app.log`")
 	}
 	// 判断日志大小限制
 	if p.MaxSize < 1 || p.MaxSize > 10000 {
 		p.MaxSize = 4
-		log.Println("file log size min value is 1(MB),max value is 10000(MB), use the default value 4(MB)")
+		printWarningMsg("file log size min value is 1(MB),max value is 10000(MB), use the default value 4(MB)")
 	}
 	// 判断日志行数限制
 	if p.MaxLines < 100 || p.MaxLines > 100000000 {
 		p.MaxLines = 100000
-		log.Println("file log lines min value is 100,max value is 100000000, use the default value 100000")
+		printWarningMsg("file log lines min value is 100,max value is 100000000, use the default value 100000")
 	}
 	// 判断日志保存天数
 	if p.SaveDay < 1 || p.SaveDay > 1000 {
 		p.SaveDay = 30
-		log.Println("file log save day min value is 1,max value is 1000, use the default value 30")
+		printWarningMsg("file log save day min value is 1,max value is 1000, use the default value 30")
 	}
 	// 判断异步模式下的管道容量
 	if p.Async {
 		if p.AsyncChanCap > 100 {
 			p.AsyncChanCap = 1
-			log.Println("async log channel cap error, min 1, max 100, use the default value 1")
+			printWarningMsg("async log channel cap error, min 1, max 100, use the default value 1")
 		}
 	} else {
 		// 非异步情况下管道容量为1
@@ -169,6 +180,9 @@ func New(options Options) (logger.Adapter, error) {
 	if err = e.selectAvailableFile(); err != nil {
 		return nil, err
 	}
+	// 初始化刷新信号管道
+	e.flushStartSignal = make(chan struct{}, 1)
+	e.flushOverSignal = make(chan struct{}, 1)
 
 	// 异步执行一次过期日志文件删除
 	go e.deleteTimeoutLogFile()
@@ -219,11 +233,6 @@ func (e *Adapter) Print(logTime time.Time, level logger.Level, content []byte) {
 
 	// 写入到管道中
 	e.fileWriteChan <- logSlice
-	// 同步时需要等待日志缓冲区被清空
-	if !e.fileWriteAsync {
-		// 空会在写入时进行判断
-		e.fileWriteChan <- nil
-	}
 }
 
 // PrintStack 调用栈日志打印方法
@@ -239,13 +248,21 @@ func (e *Adapter) Print(logTime time.Time, level logger.Level, content []byte) {
 // @params lineNo 日志记录调用文件行号
 //
 // @params methodName 日志记录调用函数名
-func (e *Adapter) PrintStack(logTime time.Time, level logger.Level, content []byte, fileName string, lineNo int, methodName string) {
+func (e *Adapter) PrintStack(logTime time.Time, level logger.Level, content []byte, fileName []byte, lineNo int, methodName []byte) {
 	// 带调用栈：
 	// 2022/09/14 20:28:13.793 [T] [belog_test.go:82] [PrintLog]  this is a trace log
 	// 日期(10) + 空格(1) + 时间(12) + 空格(1) + 级别(3) + 空格(1) + 文件名和行数(len(fileName) + 3 + 行数(5)) + 空格(1) + 函数名(2+len(methodName)) + 空格(2) + 日志内容(len(fileName)) + 回车换行(2)
 	//
 	// 裁剪为基础文件名
-	fileName = filepath.Base(fileName)
+	index := bytes.LastIndexByte(fileName, '/')
+	if index > -1 && index+1 < len(fileName) {
+		fileName = fileName[index+1:]
+	}
+	// 裁剪为基础函数名
+	index = bytes.LastIndexByte(methodName, '/')
+	if index > -1 && index+1 < len(methodName) {
+		methodName = methodName[index+1:]
+	}
 	// 计算需要的大小
 	size := 43 + len(content) + len(fileName) + len(methodName)
 	// 创建一个指定容量的切片，避免二次扩容
@@ -254,16 +271,16 @@ func (e *Adapter) PrintStack(logTime time.Time, level logger.Level, content []by
 	logSlice = append(logSlice, tool.StringToBytes(logTime.Format("2006/01/02 15:04:05.000"))...) // 23个字节
 	// 追加级别
 	logSlice = append(logSlice, ' ', '[', level.GetLevelChar(), ']') // 4个字节
-	// 追加文件名和行号，len(strconv.FormatInt(int64(fileName), 10))大于5个字节时，logSlice会发生扩容
-	logSlice = append(logSlice, ' ', '[')                                                    // 2个字节
-	logSlice = append(logSlice, tool.StringToBytes(fileName)...)                             // len(fileName)个字节
-	logSlice = append(logSlice, ':')                                                         // 1个字节
-	logSlice = append(logSlice, tool.StringToBytes(strconv.FormatInt(int64(lineNo), 10))...) // 默认5个字节
-	logSlice = append(logSlice, ']')                                                         // 1个字节
+	// 追加文件名和行号，len(strconv.Itoa(lineNo))大于5个字节时，logSlice会发生扩容
+	logSlice = append(logSlice, ' ', '[')                                    // 2个字节
+	logSlice = append(logSlice, fileName...)                                 // len(fileName)个字节
+	logSlice = append(logSlice, ':')                                         // 1个字节
+	logSlice = append(logSlice, tool.StringToBytes(strconv.Itoa(lineNo))...) // 默认5个字节
+	logSlice = append(logSlice, ']')                                         // 1个字节
 	// 追加函数名
-	logSlice = append(logSlice, ' ', '[')                          // 2个字节
-	logSlice = append(logSlice, tool.StringToBytes(methodName)...) // len(methodName)个字节
-	logSlice = append(logSlice, ']')                               // 1个字节
+	logSlice = append(logSlice, ' ', '[')      // 2个字节
+	logSlice = append(logSlice, methodName...) // len(methodName)个字节
+	logSlice = append(logSlice, ']')           // 1个字节
 	// 追加日志内容
 	logSlice = append(logSlice, ' ', ' ')   // 2个字节
 	logSlice = append(logSlice, content...) // len(content)个字节
@@ -272,11 +289,22 @@ func (e *Adapter) PrintStack(logTime time.Time, level logger.Level, content []by
 
 	// 写入到管道中
 	e.fileWriteChan <- logSlice
-	// 同步时需要等待日志缓冲区被清空
-	if !e.fileWriteAsync {
-		// 空会在写入时进行判断
-		e.fileWriteChan <- nil
-	}
+}
+
+// Flush 日志缓存刷新
+//
+// 用于日志缓冲区刷新
+// 接收到该通知后需要立即将缓冲区中的日志持久化
+func (e *Adapter) Flush() {
+	// 加锁
+	e.flushMutex.Lock()
+	defer e.flushMutex.Unlock()
+
+	// 发送刷新开始信号
+	e.flushStartSignal <- struct{}{}
+
+	// 阻塞，直到刷新完成
+	<-e.flushOverSignal
 }
 
 // getFileLines 获取文件当前总行数
@@ -356,7 +384,7 @@ func (e *Adapter) deleteTimeoutLogFile() {
 	// 打开文件夹
 	logDir, err := os.ReadDir(logDirPath)
 	if err != nil {
-		log.Println(err.Error())
+		printWarningMsg(err.Error())
 		return
 	}
 
@@ -365,7 +393,7 @@ func (e *Adapter) deleteTimeoutLogFile() {
 	// 再解析成时间类型
 	currDate, err := time.Parse("2006-01-02", currDateStr)
 	if err != nil {
-		log.Println(err.Error())
+		printWarningMsg(err.Error())
 		return
 	}
 
@@ -387,7 +415,7 @@ func (e *Adapter) deleteTimeoutLogFile() {
 				// 删除这个文件
 				err = os.Remove(filepath.Join(logDirPath, item.Name()))
 				if err != nil {
-					log.Println(err.Error())
+					printWarningMsg(err.Error())
 				}
 			}
 		}
@@ -466,32 +494,49 @@ func (e *Adapter) writeFile() {
 		log.Fatalln("create file link error: " + err.Error())
 	}
 
-	// 创建当前时间在指定时间后接收到信号的管道
-	specifiedTimeAfter := time.After(time.Hour * 1)
+	// 阻塞，执行监听写入
+	e.listenBufioWrite(file, writer)
+}
+
+// listenBufioWrite 监听日志并通过bufio写入
+func (e *Adapter) listenBufioWrite(file *os.File, writer *bufio.Writer) {
+	// 计算距离第二天凌晨0点还有多少时间
+	tmpTime := e.currTime.AddDate(0, 0, 1)
+	zeroTime := time.Date(tmpTime.Year(), tmpTime.Month(), tmpTime.Day(), 0, 0, 0, 0, time.Local)
+
+	// 分割文件的信号管道，
+	fileSplitChan := time.After(zeroTime.Sub(e.currTime))
+
+	// 在指定时间间隔强制刷新一次缓冲区
+	specifiedTimeAfter := time.NewTicker(time.Minute * 5)
+	defer specifiedTimeAfter.Stop()
+
+	// 预声明
+	var count int
+	var err error
 
 	// 监听文件写入或重新打开新的日志文件
 	for {
 		select {
 
-		// 是否持久监听4个小时了
-		case <-specifiedTimeAfter:
-			// 判断一下是否需要分隔文件了
-			if e.fileSplit() {
-				// 结束当前文件的写入
-				return
-			}
-
-		// 写日志
-		case logStr := <-e.fileWriteChan:
-			// 为空时执行跳过
-			if logStr == nil {
+		// 是否监听到日志来了
+		case logBytes := <-e.fileWriteChan:
+			// 检查内容
+			if logBytes == nil {
+				// 跳过
 				break
 			}
 
-			// 写入到缓冲区
-			count, err := writer.Write(logStr)
+			// 判断写入模式
+			if e.fileWriteAsync {
+				// 异步模式使用缓冲区写入
+				count, err = writer.Write(logBytes)
+			} else {
+				// 使用文件句柄直接写入
+				count, err = file.Write(logBytes)
+			}
 			if err != nil {
-				log.Println(err.Error())
+				printWarningMsg(err.Error())
 			}
 
 			// 增加当前文件已写入的大小
@@ -506,6 +551,41 @@ func (e *Adapter) writeFile() {
 					// 结束当前文件的写入
 					return
 				}
+			}
+
+		// 是否接收到日志刷新信号
+		case <-e.flushStartSignal:
+			// 管道中是否还有内容
+			num := len(e.fileWriteChan)
+			for i := 0; i < num; i++ {
+				logStr := <-e.fileWriteChan
+				if logStr == nil {
+					continue
+				}
+				if _, err := writer.Write(logStr); err != nil {
+					printWarningMsg(err.Error())
+				}
+			}
+
+			// 缓冲区内有内容时执行缓冲区刷新
+			if writer.Buffered() > 0 {
+				writer.Flush()
+				file.Sync()
+			}
+
+			// 发送刷新完成信号
+			e.flushOverSignal <- struct{}{}
+
+		// 是否到达凌晨0点了
+		case <-fileSplitChan:
+			if e.fileSplit() || writer.Buffered() > 0 {
+				return
+			}
+
+		// 是否需要强制刷新了
+		case <-specifiedTimeAfter.C:
+			if e.fileSplit() || writer.Buffered() > 0 {
+				return
 			}
 		}
 	}

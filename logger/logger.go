@@ -18,25 +18,11 @@ import (
 	"github.com/bearki/belog/v2/pkg/tool"
 )
 
-// Logger 日志接口
-type Logger interface {
-	SetAdapter(Adapter) error     // 适配器设置
-	SetLevel(...Level) Logger     // 日志级别设置
-	PrintCallStack() Logger       // 开启调用栈打印
-	SetSkip(uint) Logger          // 函数栈配置
-	Trace(string, ...interface{}) // 通知级别的日志
-	Debug(string, ...interface{}) // 调试级别的日志
-	Info(string, ...interface{})  // 普通级别的日志
-	Warn(string, ...interface{})  // 警告级别的日志
-	Error(string, ...interface{}) // 错误级别的日志
-	Fatal(string, ...interface{}) // 致命级别的日志
-}
+// EncoderFunc 格式化编码器类型
+type EncoderFunc func(string, ...interface{}) string
 
-// belogPrint 适配器普通日志打印方法类型
-type belogPrint func(time.Time, Level, []byte)
-
-// belogPrint 适配器调用栈日志打印方法类型
-type belogPrintStack func(time.Time, Level, []byte, string, int, string)
+// defaultEncoder 默认编码器
+var defaultEncoder EncoderFunc = fmt.Sprintf
 
 // belog 记录器对象
 type belog struct {
@@ -54,10 +40,13 @@ type belog struct {
 	// 需要记录的日志级别字符映射
 	level map[Level]LevelChar
 
-	// 适配器普通日志打印方法，每一个实例的输出句柄将会缓存在该map中
-	adapterPrints map[string]belogPrint
-	// 适配器调用栈日志打印方法，每一个实例的输出句柄将会缓存在该map中
-	adapterPrintStacks map[string]belogPrintStack
+	// 适配器缓存映射
+	adapters map[string]Adapter
+
+	// 格式化编码器
+	//
+	// 默认的格式化编码器为: fmt.Sprintf()
+	encoder EncoderFunc
 }
 
 // New 初始化一个日志记录器实例
@@ -98,16 +87,12 @@ func (b *belog) SetAdapter(adapter Adapter) error {
 	}
 
 	// map为空需要初始化
-	if b.adapterPrints == nil {
-		b.adapterPrints = make(map[string]belogPrint)
-	}
-	if b.adapterPrintStacks == nil {
-		b.adapterPrintStacks = make(map[string]belogPrintStack)
+	if b.adapters == nil {
+		b.adapters = make(map[string]Adapter)
 	}
 
-	// 赋值适配器
-	b.adapterPrints[adapter.Name()] = adapter.Print
-	b.adapterPrintStacks[adapter.Name()] = adapter.PrintStack
+	// 赋值适配器操作方法
+	b.adapters[adapter.Name()] = adapter
 
 	return nil
 }
@@ -127,7 +112,15 @@ func (b *belog) SetLevel(val ...Level) Logger {
 	return b
 }
 
+// SetEncoder 设置日志格式化编码器
+func (b *belog) SetEncoder(encoder EncoderFunc) Logger {
+	b.encoder = encoder
+	return b
+}
+
 // PrintCallStack 是否记录调用栈
+//
+// 注意：开启调用栈打印将会损失部分性能
 //
 // @return 日志记录器实例
 func (b *belog) PrintCallStack() Logger {
@@ -143,6 +136,26 @@ func (b *belog) PrintCallStack() Logger {
 func (b *belog) SetSkip(skip uint) Logger {
 	b.skip = 2 + skip
 	return b
+}
+
+// Flush 日志缓存刷新
+//
+// 用于日志缓冲区刷新，
+// 建议在程序正常退出时调用一次日志刷新，
+// 以保证日志能完整的持久化
+func (b *belog) Flush() {
+	// 协程等待组
+	var wg sync.WaitGroup
+	// 遍历适配器
+	for _, adapter := range b.adapters {
+		wg.Add(1)
+		go func(a Adapter) {
+			defer wg.Done()
+			a.Flush()
+		}(adapter)
+	}
+	// 等待所有协程结束
+	wg.Wait()
 }
 
 // print 日志打印方法
@@ -162,22 +175,33 @@ func (b *belog) print(level Level, content []byte) {
 		// 捕获函数栈文件名及执行行数
 		methodPtr, fileName, lineNo, _ := runtime.Caller(int(b.skip))
 		// 遍历适配器，执行输出
-		for _, out := range b.adapterPrintStacks {
+		for _, adapter := range b.adapters {
 			wg.Add(1)
-			go func(ouput belogPrintStack) {
+			go func(a Adapter) {
 				defer wg.Done()
-				ouput(currTime, level, content, fileName, lineNo, runtime.FuncForPC(methodPtr).Name())
-			}(out)
+				a.PrintStack(
+					currTime,
+					level,
+					content,
+					tool.StringToBytes(fileName),
+					lineNo,
+					tool.StringToBytes(runtime.FuncForPC(methodPtr).Name()),
+				)
+			}(adapter)
 		}
 
 	} else {
 		// 遍历适配器，执行输出
-		for _, out := range b.adapterPrints {
+		for _, adapter := range b.adapters {
 			wg.Add(1)
-			go func(ouput belogPrint) {
+			go func(a Adapter) {
 				defer wg.Done()
-				ouput(currTime, level, content)
-			}(out)
+				a.Print(
+					currTime,
+					level,
+					content,
+				)
+			}(adapter)
 		}
 	}
 
@@ -192,12 +216,18 @@ func (b *belog) print(level Level, content []byte) {
 // @params val 待序列化内容
 func (b *belog) Trace(format string, val ...interface{}) {
 	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelTrace]; !ok { // 当前级别日志不需要记录
+	if _, ok := b.level[LevelTrace]; !ok {
+		// 当前级别日志不需要记录
 		return
 	}
-	// 执行日志记录
-	logStr := fmt.Sprintf(format, val...)
-	b.print(LevelTrace, tool.StringToBytes(logStr))
+	// 是否使用默认编码器
+	if b.encoder == nil {
+		// 使用默认编码器
+		b.print(LevelTrace, tool.StringToBytes(defaultEncoder(format, val...)))
+	} else {
+		// 使用自定义编码器
+		b.print(LevelTrace, tool.StringToBytes(b.encoder(format, val...)))
+	}
 }
 
 // Debug 调试级别的日志
@@ -207,12 +237,18 @@ func (b *belog) Trace(format string, val ...interface{}) {
 // @params val 待序列化内容
 func (b *belog) Debug(format string, val ...interface{}) {
 	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelDebug]; !ok { // 当前级别日志不需要记录
+	if _, ok := b.level[LevelDebug]; !ok {
+		// 当前级别日志不需要记录
 		return
 	}
-	// 执行日志记录
-	logStr := fmt.Sprintf(format, val...)
-	b.print(LevelDebug, tool.StringToBytes(logStr))
+	// 是否使用默认编码器
+	if b.encoder == nil {
+		// 使用默认编码器
+		b.print(LevelDebug, tool.StringToBytes(defaultEncoder(format, val...)))
+	} else {
+		// 使用自定义编码器
+		b.print(LevelDebug, tool.StringToBytes(b.encoder(format, val...)))
+	}
 }
 
 // Info 普通级别的日志
@@ -222,12 +258,18 @@ func (b *belog) Debug(format string, val ...interface{}) {
 // @params val 待序列化内容
 func (b *belog) Info(format string, val ...interface{}) {
 	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelInfo]; !ok { // 当前级别日志不需要记录
+	if _, ok := b.level[LevelInfo]; !ok {
+		// 当前级别日志不需要记录
 		return
 	}
-	// 执行日志记录
-	logStr := fmt.Sprintf(format, val...)
-	b.print(LevelInfo, tool.StringToBytes(logStr))
+	// 是否使用默认编码器
+	if b.encoder == nil {
+		// 使用默认编码器
+		b.print(LevelInfo, tool.StringToBytes(defaultEncoder(format, val...)))
+	} else {
+		// 使用自定义编码器
+		b.print(LevelInfo, tool.StringToBytes(b.encoder(format, val...)))
+	}
 }
 
 // Warn 警告级别的日志
@@ -237,12 +279,18 @@ func (b *belog) Info(format string, val ...interface{}) {
 // @params val 待序列化内容
 func (b *belog) Warn(format string, val ...interface{}) {
 	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelWarn]; !ok { // 当前级别日志不需要记录
+	if _, ok := b.level[LevelWarn]; !ok {
+		// 当前级别日志不需要记录
 		return
 	}
-	// 执行日志记录
-	logStr := fmt.Sprintf(format, val...)
-	b.print(LevelWarn, tool.StringToBytes(logStr))
+	// 是否使用默认编码器
+	if b.encoder == nil {
+		// 使用默认编码器
+		b.print(LevelWarn, tool.StringToBytes(defaultEncoder(format, val...)))
+	} else {
+		// 使用自定义编码器
+		b.print(LevelWarn, tool.StringToBytes(b.encoder(format, val...)))
+	}
 }
 
 // Error 错误级别的日志
@@ -252,12 +300,18 @@ func (b *belog) Warn(format string, val ...interface{}) {
 // @params val 待序列化内容
 func (b *belog) Error(format string, val ...interface{}) {
 	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelError]; !ok { // 当前级别日志不需要记录
+	if _, ok := b.level[LevelError]; !ok {
+		// 当前级别日志不需要记录
 		return
 	}
-	// 执行日志记录
-	logStr := fmt.Sprintf(format, val...)
-	b.print(LevelError, tool.StringToBytes(logStr))
+	// 是否使用默认编码器
+	if b.encoder == nil {
+		// 使用默认编码器
+		b.print(LevelError, tool.StringToBytes(defaultEncoder(format, val...)))
+	} else {
+		// 使用自定义编码器
+		b.print(LevelError, tool.StringToBytes(b.encoder(format, val...)))
+	}
 }
 
 // Fatal 致命级别的日志
@@ -267,10 +321,132 @@ func (b *belog) Error(format string, val ...interface{}) {
 // @params val 待序列化内容
 func (b *belog) Fatal(format string, val ...interface{}) {
 	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[LevelFatal]; !ok { // 当前级别日志不需要记录
+	if _, ok := b.level[LevelFatal]; !ok {
+		// 当前级别日志不需要记录
 		return
 	}
-	// 执行日志记录
-	logStr := fmt.Sprintf(format, val...)
-	b.print(LevelFatal, tool.StringToBytes(logStr))
+	// 是否使用默认编码器
+	if b.encoder == nil {
+		// 使用默认编码器
+		b.print(LevelFatal, tool.StringToBytes(defaultEncoder(format, val...)))
+	} else {
+		// 使用自定义编码器
+		b.print(LevelFatal, tool.StringToBytes(b.encoder(format, val...)))
+	}
+}
+
+// Tracef 通知级别的日志（高性能序列化）
+func (b *belog) Tracef(message string, val ...Field) {
+	// 判断当前级别日志是否需要记录
+	if _, ok := b.level[LevelTrace]; !ok {
+		// 当前级别日志不需要记录
+		return
+	}
+	// 拼接为byte
+	var msg []byte
+	if len(val) > 0 {
+		msg = tool.StringToBytes("{\"fields\": {")
+		for i, v := range val {
+			if i > 0 {
+				msg = append(msg, ',', ' ')
+			}
+			msg = append(msg, v.Bytes()...)
+		}
+		msg = append(msg, '}', ',', ' ')
+		msg = append(msg, tool.StringToBytes("\"message\": ")...)
+	} else {
+		msg = tool.StringToBytes("{\"fields\": null, \"message\": ")
+	}
+
+	if len(message) > 0 {
+		msg = append(msg, '"')
+		msg = append(msg, tool.StringToBytes(message)...)
+		msg = append(msg, '"')
+	} else {
+		msg = append(msg, tool.StringToBytes("null")...)
+	}
+
+	msg = append(msg, '}')
+	// 执行打印
+	b.print(LevelTrace, msg)
+}
+
+// Debugf 调试级别的日志（高性能序列化）
+func (b *belog) Debugf(message string, val ...Field) {
+	// 判断当前级别日志是否需要记录
+	if _, ok := b.level[LevelDebug]; !ok {
+		// 当前级别日志不需要记录
+		return
+	}
+	// 拼接为byte
+	msg := tool.StringToBytes(message)
+	for _, v := range val {
+		msg = append(msg, v.Bytes()...)
+	}
+	// 执行打印
+	b.print(LevelDebug, msg)
+}
+
+// Infof 普通级别的日志（高性能序列化）
+func (b *belog) Infof(message string, val ...Field) {
+	// 判断当前级别日志是否需要记录
+	if _, ok := b.level[LevelInfo]; !ok {
+		// 当前级别日志不需要记录
+		return
+	}
+	// 拼接为byte
+	msg := tool.StringToBytes(message)
+	for _, v := range val {
+		msg = append(msg, v.Bytes()...)
+	}
+	// 执行打印
+	b.print(LevelInfo, msg)
+}
+
+// Warnf 警告级别的日志（高性能序列化）
+func (b *belog) Warnf(message string, val ...Field) {
+	// 判断当前级别日志是否需要记录
+	if _, ok := b.level[LevelWarn]; !ok {
+		// 当前级别日志不需要记录
+		return
+	}
+	// 拼接为byte
+	msg := tool.StringToBytes(message)
+	for _, v := range val {
+		msg = append(msg, v.Bytes()...)
+	}
+	// 执行打印
+	b.print(LevelWarn, msg)
+}
+
+// Errorf 错误级别的日志（高性能序列化）
+func (b *belog) Errorf(message string, val ...Field) {
+	// 判断当前级别日志是否需要记录
+	if _, ok := b.level[LevelError]; !ok {
+		// 当前级别日志不需要记录
+		return
+	}
+	// 拼接为byte
+	msg := tool.StringToBytes(message)
+	for _, v := range val {
+		msg = append(msg, v.Bytes()...)
+	}
+	// 执行打印
+	b.print(LevelError, msg)
+}
+
+// Fatalf 致命级别的日志（高性能序列化）
+func (b *belog) Fatalf(message string, val ...Field) {
+	// 判断当前级别日志是否需要记录
+	if _, ok := b.level[LevelFatal]; !ok {
+		// 当前级别日志不需要记录
+		return
+	}
+	// 拼接为byte
+	msg := tool.StringToBytes(message)
+	for _, v := range val {
+		msg = append(msg, v.Bytes()...)
+	}
+	// 执行打印
+	b.print(LevelFatal, msg)
 }
