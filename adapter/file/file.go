@@ -22,8 +22,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bearki/belog/v2/internal/convert"
+	"github.com/bearki/belog/v2/internal/pool"
 	"github.com/bearki/belog/v2/logger"
-	"github.com/bearki/belog/v2/pkg/tool"
 )
 
 // Options 文件日志适配器参数
@@ -91,6 +92,8 @@ type Adapter struct {
 	flushMutex       sync.Mutex    // 刷新操作锁
 	flushStartSignal chan struct{} // 刷新开始信号
 	flushOverSignal  chan struct{} // 刷新结束信号
+
+	logBytesPool *pool.BytesPool // 日志字节流对象池
 }
 
 // printWarningMsg 打印警告信息
@@ -184,6 +187,7 @@ func New(options Options) (logger.Adapter, error) {
 	// 初始化刷新信号管道
 	e.flushStartSignal = make(chan struct{}, 1)
 	e.flushOverSignal = make(chan struct{}, 1)
+	e.logBytesPool = pool.NewBytesPool(1000, 0, 1024)
 
 	// 异步执行一次过期日志文件删除
 	go e.deleteTimeoutLogFile()
@@ -223,11 +227,18 @@ func (e *Adapter) Print(logTime time.Time, level logger.Level, content []byte) {
 
 	// 计算需要的大小
 	size := 31 + len(content)
-	// 创建一个指定容量的切片，避免二次扩容
-	logSlice := make([]byte, 0, size)
+	// 从对象池获取切片
+	logSlice := e.logBytesPool.Get()
+	// 检查是否需要扩容
+	if cap(logSlice) < size {
+		// 创建一个指定容量的切片，避免二次扩容
+		logSlice = make([]byte, 0, size)
+	}
+	e.logBytesPool.Put(logSlice)
 
 	// 追加格式化好的日期和时间
-	logSlice = append(logSlice, tool.StringToBytes(logTime.Format("2006/01/02 15:04:05.000"))...) // 23个字节
+
+	logSlice = append(logSlice, convert.StringToBytes(logTime.Format("2006/01/02 15:04:05.000"))...) // 23个字节
 	// 追加空格
 	logSlice = append(logSlice, ' ') // 1个字节
 	// 追加级别
@@ -277,14 +288,19 @@ func (e *Adapter) PrintStack(logTime time.Time, level logger.Level, content []by
 	}
 
 	// 转换行号为切片
-	lineNoBytes := tool.StringToBytes(strconv.Itoa(lineNo))
+	lineNoBytes := convert.StringToBytes(strconv.Itoa(lineNo))
 	// 计算需要的大小
 	size := 38 + len(fileName) + len(lineNoBytes) + len(methodName) + len(content)
-	// 创建一个指定容量的切片，避免二次扩容
-	logSlice := make([]byte, 0, size)
+	// 从对象池获取切片
+	logSlice := e.logBytesPool.Get()
+	// 检查是否需要扩容
+	if cap(logSlice) < size {
+		// 创建一个指定容量的切片，避免二次扩容
+		logSlice = make([]byte, 0, size)
+	}
 
 	// 追加格式化好的日期和时间
-	logSlice = append(logSlice, tool.StringToBytes(logTime.Format("2006/01/02 15:04:05.000"))...) // 23个字节
+	logSlice = append(logSlice, convert.StringToBytes(logTime.Format("2006/01/02 15:04:05.000"))...) // 23个字节
 	// 追加空格
 	logSlice = append(logSlice, ' ') // 1个字节
 	// 追加级别
@@ -571,6 +587,9 @@ func (e *Adapter) listenBufioWrite(file *os.File, writer *bufio.Writer) {
 			if err != nil {
 				printWarningMsg(err.Error())
 			}
+
+			// 将字节流对象放回对象池
+			e.logBytesPool.Put(logBytes)
 
 			// 增加当前文件已写入的大小
 			e.currSize += uint64(count)

@@ -15,14 +15,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bearki/belog/v2/pkg/tool"
+	"github.com/bearki/belog/v2/internal/convert"
+	"github.com/bearki/belog/v2/internal/pool"
+	"github.com/bearki/belog/v2/logger/field"
 )
 
 // EncoderFunc 格式化编码器类型
 type EncoderFunc func(string, ...interface{}) string
 
-// defaultEncoder 默认编码器
+// 默认编码器
 var defaultEncoder EncoderFunc = fmt.Sprintf
+
+// 日志字节流对象池
+var logBytesPool = pool.NewBytesPool(1000, 0, 1024)
 
 // belog 记录器对象
 type belog struct {
@@ -167,8 +172,13 @@ func (b *belog) print(level Level, content []byte) {
 	// 获取日志记录时间
 	currTime := time.Now()
 
-	// 协程等待分组
-	var wg sync.WaitGroup
+	// 协程等待分组（WaitFroup会增加1个开销）
+	// var wg sync.WaitGroup
+
+	// 等待所有适配器完成日志记录
+	// wg.Wait()
+
+	// return
 
 	// 是否需要打印调用栈
 	if b.printCallStack {
@@ -176,37 +186,51 @@ func (b *belog) print(level Level, content []byte) {
 		methodPtr, fileName, lineNo, _ := runtime.Caller(int(b.skip))
 		// 遍历适配器，执行输出
 		for _, adapter := range b.adapters {
-			wg.Add(1)
-			go func(a Adapter) {
-				defer wg.Done()
-				a.PrintStack(
-					currTime,
-					level,
-					content,
-					tool.StringToBytes(fileName),
-					lineNo,
-					tool.StringToBytes(runtime.FuncForPC(methodPtr).Name()),
-				)
-			}(adapter)
+			adapter.PrintStack(
+				currTime,
+				level,
+				content,
+				convert.StringToBytes(fileName),
+				lineNo,
+				convert.StringToBytes(runtime.FuncForPC(methodPtr).Name()),
+			)
+			// （异步会增加开销）
+			// wg.Add(1)
+			// go func(a Adapter) {
+			// 	defer wg.Done()
+			// a.PrintStack(
+			// 	currTime,
+			// 	level,
+			// 	content,
+			// 	convert.StringToBytes(fileName),
+			// 	lineNo,
+			// 	convert.StringToBytes(runtime.FuncForPC(methodPtr).Name()),
+			// )
+			// }(adapter)
 		}
-
 	} else {
 		// 遍历适配器，执行输出
 		for _, adapter := range b.adapters {
-			wg.Add(1)
-			go func(a Adapter) {
-				defer wg.Done()
-				a.Print(
-					currTime,
-					level,
-					content,
-				)
-			}(adapter)
+			adapter.Print(
+				currTime,
+				level,
+				content,
+			)
+			// （异步会增加开销）
+			// wg.Add(1)
+			// go func(a Adapter) {
+			// 	defer wg.Done()
+			// 	a.Print(
+			// 		currTime,
+			// 		level,
+			// 		content,
+			// 	)
+			// }(adapter)
 		}
 	}
 
-	// 等待所有适配器完成日志记录
-	wg.Wait()
+	// // 等待所有适配器完成日志记录
+	// wg.Wait()
 }
 
 // preCheck 常规日志前置判断
@@ -222,14 +246,17 @@ func (b *belog) preCheck(level Level, format string, val ...interface{}) {
 		// 当前级别日志不需要记录
 		return
 	}
+	var content []byte
 	// 是否使用默认编码器
 	if b.encoder == nil {
 		// 使用默认编码器
-		b.print(LevelTrace, tool.StringToBytes(defaultEncoder(format, val...)))
+		content = convert.StringToBytes(defaultEncoder(format, val...))
+
 	} else {
 		// 使用自定义编码器
-		b.print(LevelTrace, tool.StringToBytes(b.encoder(format, val...)))
+		content = convert.StringToBytes(b.encoder(format, val...))
 	}
+	b.print(LevelTrace, content)
 }
 
 // Trace 通知级别的日志
@@ -293,67 +320,136 @@ func (b *belog) Fatal(format string, val ...interface{}) {
 // @params message 日志消息
 //
 // @params val 字段信息
-func (b *belog) preCheckf(level Level, message string, val ...Field) {
+func (b *belog) preCheckf(level Level, message string, val ...*field.Field) {
 	// 判断当前级别日志是否需要记录
 	if _, ok := b.level[level]; !ok {
 		// 当前级别日志不需要记录
 		return
 	}
-	// 拼接为byte
-	var msg []byte
-	if len(val) > 0 {
-		msg = tool.StringToBytes("{\"fields\": {")
-		for i, v := range val {
-			if i > 0 {
-				msg = append(msg, ',', ' ')
+
+	// 结构化为：
+	// {"field": {"k1": v1, "k2": "v2", ...}, "message": "这是一条测试数据"}
+	// 已确定的静态字符大小 30Byte, 动态字节长度：Sum(len(field)...) + Sum(len(message))
+
+	// 计算Byte大小
+	size := 28 + len(message) // 除去字段的大小
+	validFieldCount := 0      // 有效字段的数量
+	for _, v := range val {
+		if v != nil {
+			if v.Size > 0 {
+				size += v.Size
+				validFieldCount++
+			} else {
+				v.Put()
 			}
-			msg = append(msg, v.Bytes()...)
 		}
-		msg = append(msg, '}', ',', ' ')
-		msg = append(msg, tool.StringToBytes("\"message\": ")...)
-	} else {
-		msg = tool.StringToBytes("{\"fields\": null, \"message\": ")
 	}
 
-	if len(message) > 0 {
-		msg = append(msg, '"')
-		msg = append(msg, tool.StringToBytes(message)...)
-		msg = append(msg, '"')
+	// 从对象池中获取一个日志字节流对象
+	logBytes := logBytesPool.Get()
+	// 判读对象容量是否足够
+	if cap(logBytes) < size {
+		logBytes = make([]byte, 0, size)
 	} else {
-		msg = append(msg, tool.StringToBytes("null")...)
+		logBytes = logBytes[:0]
 	}
 
-	msg = append(msg, '}')
+	// 追加json开始括号
+	logBytes = append(logBytes, '{')
+
+	// 追加字段集字段
+	logBytes = append(logBytes, '"')
+	logBytes = append(logBytes, 'f', 'i', 'e', 'l', 'd', 's')
+	logBytes = append(logBytes, '"')
+	logBytes = append(logBytes, ':', ' ')
+
+	// 追加字段开始括号
+	logBytes = append(logBytes, '{')
+
+	// 判断有效字段数量并追加所有字段
+	if validFieldCount > 0 {
+		// 是否需要追加分隔符了
+		appendDelimiter := false
+		// 遍历所有字段
+		for _, v := range val {
+			// 跳过空
+			if v == nil || v.Size <= 0 {
+				continue
+			}
+
+			// 从第二个有效字段开始追加分隔符号
+			if appendDelimiter {
+				logBytes = append(logBytes, ',', ' ')
+			}
+
+			// 追加字段并序列化
+			logBytes = append(logBytes, v.StartSymBytes...)
+			logBytes = append(logBytes, v.NameBytes...)
+			logBytes = append(logBytes, v.IntervaltSymBytes...)
+			logBytes = append(logBytes, v.ValBytes...)
+			logBytes = append(logBytes, v.EndSymBytes...)
+
+			// 已经填充了一个有效字段了
+			if !appendDelimiter {
+				// 下一次需要追加分隔符
+				appendDelimiter = true
+			}
+
+			// 回收对象
+			v.Put()
+		}
+	}
+	// 追加字段结束括号
+	logBytes = append(logBytes, '}')
+
+	// 追加分隔符
+	logBytes = append(logBytes, ',', ' ')
+
+	// 追加message字段及其内容
+	logBytes = append(logBytes, '"')
+	logBytes = append(logBytes, 'm', 'e', 's', 's', 'a', 'g', 'e')
+	logBytes = append(logBytes, '"')
+	logBytes = append(logBytes, ':', ' ')
+	logBytes = append(logBytes, '"')
+	logBytes = append(logBytes, convert.StringToBytes(message)...)
+	logBytes = append(logBytes, '"')
+
+	// 追加json结尾括号
+	logBytes = append(logBytes, '}')
+
 	// 执行打印
-	b.print(level, msg)
+	b.print(level, logBytes)
+
+	// 字节流对象放回对象池
+	logBytesPool.Put(logBytes)
 }
 
 // Tracef 通知级别的日志（高性能序列化）
-func (b *belog) Tracef(message string, val ...Field) {
+func (b *belog) Tracef(message string, val ...*field.Field) {
 	b.preCheckf(LevelTrace, message, val...)
 }
 
 // Debugf 调试级别的日志（高性能序列化）
-func (b *belog) Debugf(message string, val ...Field) {
+func (b *belog) Debugf(message string, val ...*field.Field) {
 	b.preCheckf(LevelDebug, message, val...)
 }
 
 // Infof 普通级别的日志（高性能序列化）
-func (b *belog) Infof(message string, val ...Field) {
+func (b *belog) Infof(message string, val ...*field.Field) {
 	b.preCheckf(LevelInfo, message, val...)
 }
 
 // Warnf 警告级别的日志（高性能序列化）
-func (b *belog) Warnf(message string, val ...Field) {
+func (b *belog) Warnf(message string, val ...*field.Field) {
 	b.preCheckf(LevelWarn, message, val...)
 }
 
 // Errorf 错误级别的日志（高性能序列化）
-func (b *belog) Errorf(message string, val ...Field) {
+func (b *belog) Errorf(message string, val ...*field.Field) {
 	b.preCheckf(LevelError, message, val...)
 }
 
 // Fatalf 致命级别的日志（高性能序列化）
-func (b *belog) Fatalf(message string, val ...Field) {
+func (b *belog) Fatalf(message string, val ...*field.Field) {
 	b.preCheckf(LevelFatal, message, val...)
 }

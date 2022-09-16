@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/bearki/belog/v2/internal/convert"
 	"github.com/bearki/belog/v2/logger"
-	"github.com/bearki/belog/v2/pkg/tool"
 )
 
 // 控制台字体颜色字节表
@@ -91,7 +91,7 @@ func (e *Adapter) Print(logTime time.Time, level logger.Level, content []byte) {
 	logSlice := make([]byte, 0, size)
 
 	// 追加格式化好的日期和时间
-	logSlice = append(logSlice, tool.StringToBytes(logTime.Format("2006/01/02 15:04:05.000"))...) // 23个字节
+	logSlice = append(logSlice, convert.StringToBytes(logTime.Format("2006/01/02 15:04:05.000"))...) // 23个字节
 	// 追加空格
 	logSlice = append(logSlice, ' ') // 1个字节
 	// 追加颜色开始
@@ -145,14 +145,14 @@ func (e *Adapter) PrintStack(logTime time.Time, level logger.Level, content []by
 	}
 
 	// 转换行号为切片
-	lineNoBytes := tool.StringToBytes(strconv.Itoa(lineNo))
+	lineNoBytes := convert.StringToBytes(strconv.Itoa(lineNo))
 	// 计算需要的大小
 	size := 47 + len(fileName) + len(lineNoBytes) + len(methodName) + len(content)
 	// 创建一个指定容量的切片，避免二次扩容
 	logSlice := make([]byte, 0, size)
 
 	// 追加格式化好的日期和时间
-	logSlice = append(logSlice, tool.StringToBytes(logTime.Format("2006/01/02 15:04:05.000"))...) // 23个字节
+	logSlice = append(logSlice, convert.StringToBytes(logTime.Format("2006/01/02 15:04:05.000"))...) // 23个字节
 	// 追加空格
 	logSlice = append(logSlice, ' ') // 1个字节
 	// 追加颜色开始
