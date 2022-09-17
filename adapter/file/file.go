@@ -240,7 +240,7 @@ func (e *Adapter) format(ps bool, t time.Time, l logger.Level, c []byte, f []byt
 	// const initSize = 10 + 1 + 12 + 1 + 3 + 1 + 3 + 1 + 2 + 2 + 2 = 38
 
 	// 预留行号切片
-	var lineNoBytes []byte
+	var ln []byte
 
 	// 计算需要的大小
 	size := 31 + len(c)
@@ -258,9 +258,9 @@ func (e *Adapter) format(ps bool, t time.Time, l logger.Level, c []byte, f []byt
 		}
 
 		// 转换行号为切片
-		lineNoBytes := convert.StringToBytes(strconv.Itoa(n))
+		ln = strconv.AppendInt(ln, int64(n), 10)
 		// 重新计算需要的大小
-		size = 38 + len(f) + len(lineNoBytes) + len(m) + len(c)
+		size = 38 + len(c) + len(f) + len(ln) + len(m)
 	}
 
 	// 从对象池获取切片
@@ -283,21 +283,21 @@ func (e *Adapter) format(ps bool, t time.Time, l logger.Level, c []byte, f []byt
 		logSlice = append(logSlice, ' ') // 1个字节
 		// 追加文件名和行号
 		logSlice = append(logSlice, '[')            // 1个字节
-		logSlice = append(logSlice, f...)           // len(fileName)个字节
+		logSlice = append(logSlice, f...)           // len(f)个字节
 		logSlice = append(logSlice, ':')            // 1个字节
-		logSlice = append(logSlice, lineNoBytes...) // len(lineNo)个字节
+		logSlice = append(logSlice, ln...) // len(ln)个字节
 		logSlice = append(logSlice, ']')            // 1个字节
 		// 追加空格
 		logSlice = append(logSlice, ' ') // 1个字节
 		// 追加函数名
 		logSlice = append(logSlice, '[')  // 1个字节
-		logSlice = append(logSlice, m...) // len(methodName)个字节
+		logSlice = append(logSlice, m...) // len(m)个字节
 		logSlice = append(logSlice, ']')  // 1个字节
 	}
 	// 追加空格
 	logSlice = append(logSlice, ' ', ' ') // 2个字节
 	// 追加日志内容
-	logSlice = append(logSlice, c...) // len(content)个字节
+	logSlice = append(logSlice, c...) // len(c)个字节
 	// 追加回车换行
 	logSlice = append(logSlice, '\r', '\n') // 2个字节
 
