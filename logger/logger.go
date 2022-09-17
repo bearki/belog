@@ -249,9 +249,13 @@ func (b *belog) preCheck(level Level, format string, val ...interface{}) {
 	var content []byte
 	// 是否使用默认编码器
 	if b.encoder == nil {
-		// 使用默认编码器
-		content = convert.StringToBytes(defaultEncoder(format, val...))
-
+		// 仅静态字符串时开启优化打印
+		if len(val) == 0 {
+			content = convert.StringToBytes(format)
+		} else {
+			// 使用默认编码器
+			content = convert.StringToBytes(defaultEncoder(format, val...))
+		}
 	} else {
 		// 使用自定义编码器
 		content = convert.StringToBytes(b.encoder(format, val...))

@@ -34,7 +34,7 @@ func BenchmarkNewFileBelog(b *testing.B) {
 		MaxSize:      200,                    // 日志单文件大小
 		MaxLines:     1000000,                // 单文件最大行数
 		SaveDay:      7,                      // 日志保存天数
-		Async:        true,                   // 开启异步写入(main函数提前结束会导致日志未写入)
+		Async:        false,                  // 开启异步写入(main函数提前结束会导致日志未写入)
 		AsyncChanCap: 100,                    // 异步缓存管道容量
 	})
 	if err != nil {
@@ -47,23 +47,23 @@ func BenchmarkNewFileBelog(b *testing.B) {
 		fmt.Printf("belog logger create failed, %s\r\n", err)
 		return
 	}
-	defer mylog.Flush()
+	// defer mylog.Flush()
 
 	for i := 0; i < b.N; i++ {
-		mylog.Tracef(
-			"this is a trace log",
-			field.Bool("key0", i%2 == 0),
-			// field.Int8("key1", 1),
-			// field.Int32("key2", 2),
-			// field.Int64("key3", 3),
-			// field.Uint32("key4", 4),
-			// field.Uint64("key5", 5),
-			// field.Intp("key6", &i),
-			// field.String("key7", "test1"),
-			// field.String("key8", "test2"),
-			// field.String("key9", "test3"),
-		)
-		// mylog.Trace("this is a trace log, index: %v", i)
+		// mylog.Tracef(
+		// 	"this is a trace log",
+		// 	field.Bool("key0", i%2 == 0),
+		// 	// field.Int8("key1", 1),
+		// 	// field.Int32("key2", 2),
+		// 	// field.Int64("key3", 3),
+		// 	// field.Uint32("key4", 4),
+		// 	// field.Uint64("key5", 5),
+		// 	// field.Intp("key6", &i),
+		// 	// field.String("key7", "test1"),
+		// 	// field.String("key8", "test2"),
+		// 	// field.String("key9", "test3"),
+		// )
+		mylog.Trace("this is a trace log")
 	}
 }
 
