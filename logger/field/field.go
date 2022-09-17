@@ -1,54 +1,35 @@
 package field
 
-import (
-	"sync"
+import "github.com/bearki/belog/v2/internal/pool"
 
-	"github.com/bearki/belog/v2/internal/pool"
+// 普通类型键值对序列化符号（包含：布尔型、（有、无）符号整形、浮点型、null...等无需使用符号包裹的类型）
+var (
+	normalValPrefix = [0]byte{}
+	normalValSuffix = [0]byte{}
 )
 
-// fieldBytesPool 字段结构对象池
-var fieldStructPool = pool.NewStructPool(1000, Field{})
+// 字符串类型键值对序列化符号
+var (
+	stringValPrefix = [1]byte{'"'}
+	stringValSuffix = [1]byte{'"'}
+)
 
-func init() {
-	// 预放置5个对象在对象池中
-	for i := 0; i < 5; i++ {
-		fieldStructPool.Put(&Field{})
-	}
-}
-
-// Field 字段序列化
+// Field 键值对序列化结构体
 type Field struct {
-	Size              int
-	StartSymBytes     []byte
-	NameBytes         []byte
-	IntervaltSymBytes []byte
-	ValBytes          []byte
-	EndSymBytes       []byte
-	allowPutMutex     sync.Mutex
-	allowPut          bool
+	KeyBytes       []byte                // 键的字节流
+	ValPrefixBytes []byte                // 值的前缀字节流
+	ValBytes       []byte                // 值的字节流
+	ValSuffixBytes []byte                // 值的后缀字节流
+	valBytesPut    pool.BytesPoolPutFunc // 值的字节切片回收到复用池的方法
 }
 
-// Put 将对象放回到对象池中
-func (f *Field) Put() {
-	// // 异步操作（异步会增加开销）
-	// go func() {
-	// 是否允许被放回对象池
-	if !f.allowPut {
-		return
+// Put 将字段引用的底层字节数组回收到复用池
+func (v Field) Put() {
+	// 回收值使用的底层字节数组
+	if v.valBytesPut != nil {
+		v.valBytesPut(v.ValBytes)
 	}
-
-	// 尝试互斥操作
-	if !f.allowPutMutex.TryLock() {
-		return
-	}
-	defer f.allowPutMutex.Unlock()
-
-	// 是否允许被放回对象池
-	if !f.allowPut {
-		return
-	}
-
-	// 将对象放回对象池
-	f.allowPut = !fieldStructPool.Put(f)
-	// }()
 }
+
+// 数值类型的字节切片复用池（字节切片最大容量为8）
+var numberBytesPool = pool.NewBytesPool(100, 0, 8)

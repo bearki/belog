@@ -7,7 +7,7 @@ type Level uint8
 type LevelChar = byte
 
 // 日志保存级别定义
-var (
+const (
 	LevelTrace Level = 1 // 通知级别
 	LevelDebug Level = 2 // 调试级别
 	LevelInfo  Level = 3 // 普通级别

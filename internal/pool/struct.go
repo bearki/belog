@@ -1,42 +1,56 @@
 package pool
 
-// StructPool 对象池
-type StructPool[T any] struct {
-	sp chan *T // 对象池管道
-	si T       // 对象初始值
+// StructPtrPool 结构体指针复用池
+//
+// 注意：T为结构体，请勿传入指针类型
+type StructPtrPool[T any] struct {
+	sppc chan *T // 复用池管道
+	siv  T       // 结构体初始值
 }
 
-// NewStructPool 创建一个对象池
-func NewStructPool[T any](maxNum int, initStruct T) *StructPool[T] {
-	return &StructPool[T]{
-		sp: make(chan *T, maxNum), // 对象池管道
-		si: initStruct,            // 对象初始化时的默认值
+// NewStructPtrPool 结构体指针复用池
+//
+// 注意：T为结构体，请勿传入指针类型
+//
+// @params maxNum 复用池容量
+//
+// @params initStruct 创建新结构体指针时需要使用的初始值
+func NewStructPtrPool[T any](maxNum int, initStruct T) *StructPtrPool[T] {
+	spp := &StructPtrPool[T]{
+		sppc: make(chan *T, maxNum),
+		siv:  initStruct,
 	}
+	if maxNum > 0 {
+		tmp := new(T)
+		*tmp = initStruct
+		spp.sppc <- tmp
+	}
+	return spp
 }
 
-// Get 从对象池中获取一个对象
-func (bp *StructPool[T]) Get() (s *T) {
+// Get 从复用池中获取一个结构体指针
+func (bp *StructPtrPool[T]) Get() (s *T) {
 	select {
 
-	case s = <-bp.sp:
+	case s = <-bp.sppc:
 		// 获取成功
 
 	default:
-		// 获取失败，创建一个新对象
+		// 获取失败，创建一个新结构体指针
 		s = new(T)
-		*s = bp.si
+		*s = bp.siv
 
 	}
 
 	return
 }
 
-// Put 将当前对象放回对象池
-func (bp *StructPool[T]) Put(b *T) bool {
-	// 尝试将当前对象放回对象池
+// Put 将结构体指针放回复用池
+func (bp *StructPtrPool[T]) Put(b *T) bool {
+	// 尝试将结构体指针放回复用池
 	select {
 
-	case bp.sp <- b:
+	case bp.sppc <- b:
 		// 放回成功
 		return true
 

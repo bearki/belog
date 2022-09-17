@@ -187,7 +187,8 @@ func New(options Options) (logger.Adapter, error) {
 	// 初始化刷新信号管道
 	e.flushStartSignal = make(chan struct{}, 1)
 	e.flushOverSignal = make(chan struct{}, 1)
-	e.logBytesPool = pool.NewBytesPool(1000, 0, 1024)
+	// 日志字节流对象池
+	e.logBytesPool = pool.NewBytesPool(100, 0, 1024)
 
 	// 异步执行一次过期日志文件删除
 	go e.deleteTimeoutLogFile()
@@ -210,64 +211,27 @@ func (e *Adapter) Name() string {
 	return "belog-file-adapter"
 }
 
-// Print 普通日志打印方法
+// format 格式化输出内容
 //
-// @params logTime 日记记录时间
+// @params t 日记记录时间
 //
-// @params level 日志级别
+// @params l 日志级别
 //
-// @params content 日志内容
-func (e *Adapter) Print(logTime time.Time, level logger.Level, content []byte) {
+// @params c 日志内容
+//
+// @params f 日志记录调用文件路径
+//
+// @params n 日志记录调用文件行号
+//
+// @params m 日志记录调用函数名
+func (e *Adapter) format(ps bool, t time.Time, l logger.Level, c []byte, f []byte, n int, m []byte) {
 	// 不带调用栈：
 	// 2022/09/14 20:28:13.793 [T]  this is a trace log\r\n
 	// ++++++++++_++++++++++++_+++__+++++++++++++++++++____
 	//     10    1    12      1 3 2   content           2
 	//
 	// const initSize = 10 + 1 + 12 + 1 + 3 + 2 + 2 = 31
-
-	// 计算需要的大小
-	size := 31 + len(content)
-	// 从对象池获取切片
-	logSlice := e.logBytesPool.Get()
-	// 检查是否需要扩容
-	if cap(logSlice) < size {
-		// 创建一个指定容量的切片，避免二次扩容
-		logSlice = make([]byte, 0, size)
-	}
-	e.logBytesPool.Put(logSlice)
-
-	// 追加格式化好的日期和时间
-
-	logSlice = append(logSlice, convert.StringToBytes(logTime.Format("2006/01/02 15:04:05.000"))...) // 23个字节
-	// 追加空格
-	logSlice = append(logSlice, ' ') // 1个字节
-	// 追加级别
-	logSlice = append(logSlice, '[', level.GetLevelChar(), ']') // 3个字节
-	// 追加空格
-	logSlice = append(logSlice, ' ', ' ') // 2个字节
-	// 追加日志内容
-	logSlice = append(logSlice, content...) // len(content)个字节
-	// 追加回车换行
-	logSlice = append(logSlice, '\r', '\n') // 2个字节
-
-	// 写入到管道中
-	e.fileWriteChan <- logSlice
-}
-
-// PrintStack 调用栈日志打印方法
-//
-// @params logTime 日记记录时间
-//
-// @params level 日志级别
-//
-// @params content 日志内容
-//
-// @params fileName 日志记录调用文件路径
-//
-// @params lineNo 日志记录调用文件行号
-//
-// @params methodName 日志记录调用函数名
-func (e *Adapter) PrintStack(logTime time.Time, level logger.Level, content []byte, fileName []byte, lineNo int, methodName []byte) {
+	//
 	// 带调用栈：
 	// 2022/09/14 20:28:13.793 [T] [belog_test.go:82] [PrintLog]  this is a trace log\r\n
 	// ++++++++++_++++++++++++_+++_++++++++++++++++++_++++++++++__+++++++++++++++++++____
@@ -275,22 +239,30 @@ func (e *Adapter) PrintStack(logTime time.Time, level logger.Level, content []by
 	//
 	// const initSize = 10 + 1 + 12 + 1 + 3 + 1 + 3 + 1 + 2 + 2 + 2 = 38
 
-	// 裁剪为基础文件名
-	index := bytes.LastIndexByte(fileName, '/')
-	if index > -1 && index+1 < len(fileName) {
-		fileName = fileName[index+1:]
-	}
+	// 预留行号切片
+	var lineNoBytes []byte
 
-	// 裁剪为基础函数名
-	index = bytes.LastIndexByte(methodName, '/')
-	if index > 0 && index+1 < len(methodName) {
-		methodName = methodName[index+1:]
-	}
-
-	// 转换行号为切片
-	lineNoBytes := convert.StringToBytes(strconv.Itoa(lineNo))
 	// 计算需要的大小
-	size := 38 + len(fileName) + len(lineNoBytes) + len(methodName) + len(content)
+	size := 31 + len(c)
+	if ps {
+		// 裁剪为基础文件名
+		index := bytes.LastIndexByte(f, '/')
+		if index > -1 && index+1 < len(f) {
+			f = f[index+1:]
+		}
+
+		// 裁剪为基础函数名
+		index = bytes.LastIndexByte(m, '/')
+		if index > 0 && index+1 < len(m) {
+			m = m[index+1:]
+		}
+
+		// 转换行号为切片
+		lineNoBytes := convert.StringToBytes(strconv.Itoa(n))
+		// 重新计算需要的大小
+		size = 38 + len(f) + len(lineNoBytes) + len(m) + len(c)
+	}
+
 	// 从对象池获取切片
 	logSlice := e.logBytesPool.Get()
 	// 检查是否需要扩容
@@ -300,34 +272,67 @@ func (e *Adapter) PrintStack(logTime time.Time, level logger.Level, content []by
 	}
 
 	// 追加格式化好的日期和时间
-	logSlice = append(logSlice, convert.StringToBytes(logTime.Format("2006/01/02 15:04:05.000"))...) // 23个字节
+	logSlice = t.AppendFormat(logSlice, "2006/01/02 15:04:05.000") // 23个字节
 	// 追加空格
 	logSlice = append(logSlice, ' ') // 1个字节
 	// 追加级别
-	logSlice = append(logSlice, '[', level.GetLevelChar(), ']') // 3个字节
-	// 追加空格
-	logSlice = append(logSlice, ' ') // 1个字节
-	// 追加文件名和行号
-	logSlice = append(logSlice, '[')            // 1个字节
-	logSlice = append(logSlice, fileName...)    // len(fileName)个字节
-	logSlice = append(logSlice, ':')            // 1个字节
-	logSlice = append(logSlice, lineNoBytes...) // len(lineNo)个字节
-	logSlice = append(logSlice, ']')            // 1个字节
-	// 追加空格
-	logSlice = append(logSlice, ' ') // 1个字节
-	// 追加函数名
-	logSlice = append(logSlice, '[')           // 1个字节
-	logSlice = append(logSlice, methodName...) // len(methodName)个字节
-	logSlice = append(logSlice, ']')           // 1个字节
+	logSlice = append(logSlice, '[', l.GetLevelChar(), ']') // 3个字节
+	// 是否需要记录调用栈
+	if ps {
+		// 追加空格
+		logSlice = append(logSlice, ' ') // 1个字节
+		// 追加文件名和行号
+		logSlice = append(logSlice, '[')            // 1个字节
+		logSlice = append(logSlice, f...)           // len(fileName)个字节
+		logSlice = append(logSlice, ':')            // 1个字节
+		logSlice = append(logSlice, lineNoBytes...) // len(lineNo)个字节
+		logSlice = append(logSlice, ']')            // 1个字节
+		// 追加空格
+		logSlice = append(logSlice, ' ') // 1个字节
+		// 追加函数名
+		logSlice = append(logSlice, '[')  // 1个字节
+		logSlice = append(logSlice, m...) // len(methodName)个字节
+		logSlice = append(logSlice, ']')  // 1个字节
+	}
 	// 追加空格
 	logSlice = append(logSlice, ' ', ' ') // 2个字节
 	// 追加日志内容
-	logSlice = append(logSlice, content...) // len(content)个字节
+	logSlice = append(logSlice, c...) // len(content)个字节
 	// 追加回车换行
 	logSlice = append(logSlice, '\r', '\n') // 2个字节
 
-	// 写入到管道中
+	// 发送到管道
 	e.fileWriteChan <- logSlice
+}
+
+// Print 普通日志打印方法
+//
+// @params t 日记记录时间
+//
+// @params l 日志级别
+//
+// @params c 日志内容
+func (e *Adapter) Print(t time.Time, l logger.Level, c []byte) {
+	// 执行格式化并推送到管道
+	e.format(false, t, l, c, nil, 0, nil)
+}
+
+// PrintStack 调用栈日志打印方法
+//
+// @params t 日记记录时间
+//
+// @params l 日志级别
+//
+// @params c 日志内容
+//
+// @params f 日志记录调用文件路径
+//
+// @params n 日志记录调用文件行号
+//
+// @params m 日志记录调用函数名
+func (e *Adapter) PrintStack(t time.Time, l logger.Level, c []byte, f []byte, n int, m []byte) {
+	// 执行格式化并推送到管道
+	e.format(true, t, l, c, f, n, m)
 }
 
 // Flush 日志缓存刷新

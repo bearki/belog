@@ -61,10 +61,10 @@ type Logger interface {
 	Error(string, ...interface{}) // 错误级别的日志
 	Fatal(string, ...interface{}) // 致命级别的日志
 
-	Tracef(string, ...*field.Field) // 通知级别的日志（高性能序列化）
-	Debugf(string, ...*field.Field) // 调试级别的日志（高性能序列化）
-	Infof(string, ...*field.Field)  // 普通级别的日志（高性能序列化）
-	Warnf(string, ...*field.Field)  // 警告级别的日志（高性能序列化）
-	Errorf(string, ...*field.Field) // 错误级别的日志（高性能序列化）
-	Fatalf(string, ...*field.Field) // 致命级别的日志（高性能序列化）
+	Tracef(string, ...field.Field) // 通知级别的日志（高性能序列化）
+	Debugf(string, ...field.Field) // 调试级别的日志（高性能序列化）
+	Infof(string, ...field.Field)  // 普通级别的日志（高性能序列化）
+	Warnf(string, ...field.Field)  // 警告级别的日志（高性能序列化）
+	Errorf(string, ...field.Field) // 错误级别的日志（高性能序列化）
+	Fatalf(string, ...field.Field) // 致命级别的日志（高性能序列化）
 }

@@ -5,7 +5,7 @@ import (
 	"unsafe"
 )
 
-// StringToBytes 字符串指针转字节切片指针(外部自己保证指针有效性)
+// StringToBytes 字符串转字节切片
 func StringToBytes(s string) []byte {
 	sh := (*reflect.StringHeader)(unsafe.Pointer(&s))
 	var b []byte
