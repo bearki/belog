@@ -25,11 +25,12 @@ import (
 // EncoderFunc 格式化编码器类型
 type EncoderFunc func(string, ...interface{}) string
 
-// 默认编码器
-var defaultEncoder EncoderFunc = fmt.Sprintf
-
 // 日志字节流对象池
 var logBytesPool = pool.NewBytesPool(100, 0, 1024)
+
+// Option 日志记录器初始化参数
+type Option struct {
+}
 
 // belog 记录器对象
 type belog struct {
@@ -65,11 +66,6 @@ type belog struct {
 
 	// 适配器缓存映射
 	adapters map[string]Adapter
-
-	// 格式化编码器
-	//
-	// 默认的格式化编码器为: fmt.Sprintf()
-	encoder EncoderFunc
 }
 
 // New 初始化一个日志记录器实例
@@ -77,14 +73,9 @@ type belog struct {
 // @params adapter 日志适配器
 //
 // @return 日志记录器实例
-func New(adapter Adapter) (Logger, error) {
+func New(option Option, adapter ...Adapter) (Logger, error) {
 	// 初始化日志记录器对象
 	b := new(belog)
-	// 初始化适配器
-	err := b.SetAdapter(adapter)
-	if err != nil {
-		return nil, err
-	}
 	// 赋值默认的时间样式
 	b.timeFormat = "2006/01/02 15:04:05.000"
 	// json字段key
@@ -100,6 +91,13 @@ func New(adapter Adapter) (Logger, error) {
 	b.SetSkip(0)
 	// 默认开启全部级别的日志记录
 	b.SetLevel(LevelTrace, LevelDebug, LevelInfo, LevelWarn, LevelError, LevelFatal)
+	// 初始化适配器
+	for _, v := range adapter {
+		err := b.SetAdapter(v)
+		if err != nil {
+			return nil, err
+		}
+	}
 	// 返回日志示例指针
 	return b, nil
 }
@@ -143,12 +141,6 @@ func (b *belog) SetLevel(val ...Level) Logger {
 	for _, item := range val {
 		b.level[item] = levelMap[item]
 	}
-	return b
-}
-
-// SetEncoder 设置日志格式化编码器
-func (b *belog) SetEncoder(encoder EncoderFunc) Logger {
-	b.encoder = encoder
 	return b
 }
 

@@ -47,12 +47,11 @@ type Adapter interface {
 
 // Logger 日志接口
 type Logger interface {
-	SetAdapter(Adapter) error              // 适配器设置
-	SetLevel(...Level) Logger              // 日志级别设置
-	SetEncoder(encoder EncoderFunc) Logger // 自定义格式化编码器
-	PrintCallStack() Logger                // 开启调用栈打印
-	SetSkip(uint) Logger                   // 函数栈配置
-	Flush()                                // 日志缓存刷新
+	SetAdapter(Adapter) error // 适配器设置
+	SetLevel(...Level) Logger // 日志级别设置
+	PrintCallStack() Logger   // 开启调用栈打印
+	SetSkip(uint) Logger      // 函数栈配置
+	Flush()                   // 日志缓存刷新
 
 	Trace(string, ...interface{}) // 通知级别的日志
 	Debug(string, ...interface{}) // 调试级别的日志

@@ -8,6 +8,7 @@ import (
 
 	"github.com/bearki/belog/v2"
 	"github.com/bearki/belog/v2/adapter/file"
+	"github.com/bearki/belog/v2/logger"
 	"github.com/bearki/belog/v2/logger/field"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -42,7 +43,7 @@ func BenchmarkNewFileBelog(b *testing.B) {
 		return
 	}
 	// 初始化一个实例(可实例化任意适配器)
-	mylog, err := belog.New(fielAdapter)
+	mylog, err := belog.New(logger.Option{}, fielAdapter)
 	if err != nil {
 		fmt.Printf("belog logger create failed, %s\r\n", err)
 		return
@@ -85,7 +86,7 @@ func TestNewFileBelog(t *testing.T) {
 		return
 	}
 	// 初始化一个实例(可实例化任意适配器)
-	mylog, err := belog.New(fielAdapter)
+	mylog, err := belog.New(logger.Option{}, fielAdapter)
 	if err != nil {
 		fmt.Printf("belog logger create failed, %s\r\n", err)
 		return
