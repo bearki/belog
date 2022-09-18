@@ -23,9 +23,9 @@ func Uint64(name string, value uint64) Field {
 	f := Field{
 		KeyBytes:       convert.StringToBytes(name),
 		ValPrefixBytes: normalValPrefix[:],
-		ValBytes:       strconv.AppendUint(numberBytesPool.Get(), value, 10),
+		ValBytes:       strconv.AppendUint(eightCapBytesPool.Get(), value, 10),
 		ValSuffixBytes: normalValSuffix[:],
-		valBytesPut:    numberBytesPool.Put,
+		valBytesPut:    eightCapBytesPool.Put,
 	}
 	return f
 }
@@ -62,6 +62,13 @@ func Uint8(name string, value uint8) Field {
 //
 // 拼接格式  "index": 255
 func Byte(name string, value byte) Field {
+	return Uint64(name, uint64(value))
+}
+
+// Uintptr 格式化uintptr类型字段信息
+//
+// 拼接格式  "index": 255
+func Uintptr(name string, value uintptr) Field {
 	return Uint64(name, uint64(value))
 }
 
@@ -119,6 +126,16 @@ func Uint8p(name string, valuep *uint8) Field {
 //
 // 拼接格式  "index": 255
 func Bytep(name string, valuep *byte) Field {
+	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
+		return f
+	}
+	return Uint64(name, uint64(*valuep))
+}
+
+// Uintptrp 格式化*uintptr类型字段信息
+//
+// 拼接格式  "index": 255
+func Uintptrp(name string, valuep *uintptr) Field {
 	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
 		return f
 	}

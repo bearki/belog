@@ -31,5 +31,9 @@ func (v Field) Put() {
 	}
 }
 
-// 数值类型的字节切片复用池（字节切片最大容量为8）
-var numberBytesPool = pool.NewBytesPool(100, 0, 8)
+var (
+	// 8个容量字节切片复用池
+	eightCapBytesPool = pool.NewBytesPool(100, 0, 8)
+	// 16个容量的字节切片复用池
+	sixteenCapBytesPool = pool.NewBytesPool(100, 0, 16)
+)

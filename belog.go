@@ -80,7 +80,7 @@ func initDefaultAdapter() {
 	// 判断适配器是否初始化
 	if belogDefault == nil {
 		initOnce.Do(func() {
-			belogDefault, _ = New(console.New())
+			belogDefault, _ = New(console.New(console.Option{}))
 			belogDefault.SetSkip(1) // 固定的函数栈层数
 		})
 	}

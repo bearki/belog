@@ -23,9 +23,9 @@ func Int64(name string, value int64) Field {
 	f := Field{
 		KeyBytes:       convert.StringToBytes(name),
 		ValPrefixBytes: normalValPrefix[:],
-		ValBytes:       strconv.AppendInt(numberBytesPool.Get(), value, 10),
+		ValBytes:       strconv.AppendInt(eightCapBytesPool.Get(), value, 10),
 		ValSuffixBytes: normalValSuffix[:],
-		valBytesPut:    numberBytesPool.Put,
+		valBytesPut:    eightCapBytesPool.Put,
 	}
 	return f
 }

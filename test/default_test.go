@@ -1,30 +1,50 @@
 package test
 
 import (
+	"fmt"
 	"testing"
-
-	"github.com/bearki/belog/v2"
-	"github.com/bearki/belog/v2/logger"
 )
 
 // TestDefultBelog 默认方式输出日志
 func TestDefultBelog(t *testing.T) {
-	// 记录调用栈
-	belog.PrintCallStack()
-	// 指定需要记录的日志级别（默认全部级别）
-	belog.SetLevel(
-		logger.LevelTrace,
-		logger.LevelDebug,
-		logger.LevelInfo,
-		logger.LevelWarn,
-		logger.LevelError,
-		logger.LevelFatal,
-	)
-	// 打印日志
-	belog.Trace("this is a trace log")
-	belog.Debug("this is a debug log")
-	belog.Info("this is a info log")
-	belog.Warn("this is a warn log")
-	belog.Error("this is a error log")
-	belog.Fatal("this is a fatal log")
+	type ab struct{}
+	var x interface{} = complex64(3)
+	switch x.(type) {
+	case bool:
+		fmt.Println("bool")
+	case string:
+		fmt.Println("string")
+	case int8:
+		fmt.Println("int8")
+	case int16:
+		fmt.Println("int16")
+	case int32:
+		fmt.Println("int32")
+	case int64:
+		fmt.Println("int64")
+	case int:
+		fmt.Println("int")
+	case uint8:
+		fmt.Println("uint8")
+	case uint16:
+		fmt.Println("uint16")
+	case uint32:
+		fmt.Println("uint32")
+	case uint64:
+		fmt.Println("uint64")
+	case uint:
+		fmt.Println("uint")
+	case float32:
+		fmt.Println("float32")
+	case float64:
+		fmt.Println("float64")
+	case complex64:
+		fmt.Println("complex64")
+	case complex128:
+		fmt.Println("complex128")
+	case uintptr:
+		fmt.Println("uintptr")
+	default:
+
+	}
 }
