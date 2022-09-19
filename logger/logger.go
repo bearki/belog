@@ -10,7 +10,6 @@ package logger
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"runtime"
 	"strconv"
 	"strings"
@@ -19,53 +18,47 @@ import (
 
 	"github.com/bearki/belog/v2/internal/convert"
 	"github.com/bearki/belog/v2/internal/pool"
-	"github.com/bearki/belog/v2/logger/field"
 )
-
-// EncoderFunc 格式化编码器类型
-type EncoderFunc func(string, ...interface{}) string
 
 // 日志字节流对象池
 var logBytesPool = pool.NewBytesPool(100, 0, 1024)
 
-// Option 日志记录器初始化参数
-type Option struct {
-}
-
-// belog 记录器对象
+// belog 标准记录器
 type belog struct {
-	// 是否开启调用栈记录
-	printCallStack bool
-	// 是否禁用JSON序列化输出
-	disabledJsonFormat bool
-
-	// 时间格式化样式
-	//
-	// 默认: 2006/01/02 15:04:05.000
-	timeFormat string
-
-	timeJsonKey        string
-	levelJsonKey       string
-	stackJsonKey       string
-	stackFileJsonKey   string
-	stackLineNoJsonKey string
-	stackMethodJsonKey string
-	fieldsJsonKey      string
-	messageJsonKey     string
-
-	// 需要向上捕获的函数栈层数（
-	// 该值会自动加2，以便于实例化用户可直接使用
+	// 需要跳过的调用栈栈层数
+	// 该值会自动加3，以便于实例化用户可直接使用
 	// 【示例】
 	// 0：runtime.Caller函数的执行位置（在belog包内）
 	// 1：belog各级别方法实现位置（在belog包内）
 	// 2：belog实例调用各级别日志函数位置，依此类推】
-	skip uint
+	stackSkip uint
 
-	// 需要记录的日志级别字符映射
-	level map[Level]LevelChar
+	// 缓存映射配置
 
-	// 适配器缓存映射
-	adapters map[string]Adapter
+	levelMapRWMutex sync.RWMutex        // 日志级别配置读写锁
+	levelMap        map[Level]LevelChar // 需要记录的日志级别字符映射
+	adaptersRWMutex sync.RWMutex        // 适配器配置读写锁
+	adapters        map[string]Adapter  // 适配器缓存映射
+
+	// 功能配置
+
+	printCallStack     bool // 是否打印调用栈
+	disabledJsonFormat bool // 是否禁用JSON序列化输出
+
+	// 序列化格式配置
+
+	timeFormat string // 时间序列化格式
+
+	// JSON字段配置
+
+	timeJsonKey        string // 时间的JSON键名
+	levelJsonKey       string // 日志级别的JSON键名
+	stackJsonKey       string // 调用栈信息JSON键名
+	stackFileJsonKey   string // 调用栈文件名JSON键名
+	stackLineNoJsonKey string // 调用栈文件行号JSON键名
+	stackMethodJsonKey string // 调用栈函数名JSON键名
+	fieldsJsonKey      string // 字段集JSON键名
+	messageJsonKey     string // 日志消息JSON键名
 }
 
 // New 初始化一个日志记录器实例
@@ -76,21 +69,26 @@ type belog struct {
 func New(option Option, adapter ...Adapter) (Logger, error) {
 	// 初始化日志记录器对象
 	b := new(belog)
-	// 赋值默认的时间样式
-	b.timeFormat = "2006/01/02 15:04:05.000"
-	// json字段key
-	b.timeJsonKey = "time"
-	b.levelJsonKey = "level"
-	b.stackJsonKey = "stack"
-	b.stackFileJsonKey = "file"
-	b.stackLineNoJsonKey = "line"
-	b.stackMethodJsonKey = "method"
-	b.fieldsJsonKey = "fields"
-	b.messageJsonKey = "message"
+
+	// 获取有效参数
+	option = getValidOption(option)
+	b.printCallStack = option.PrintCallStack
+	b.disabledJsonFormat = option.DisabledJsonFormat
+	b.timeFormat = option.TimeFormat
+	b.timeJsonKey = option.TimeJsonKey
+	b.levelJsonKey = option.LevelJsonKey
+	b.stackJsonKey = option.StackJsonKey
+	b.stackFileJsonKey = option.StackFileJsonKey
+	b.stackLineNoJsonKey = option.StackLineNoJsonKey
+	b.stackMethodJsonKey = option.StackMethodJsonKey
+	b.fieldsJsonKey = option.FieldsJsonKey
+	b.messageJsonKey = option.MessageJsonKey
+
 	// 默认不需要跳过函数堆栈
 	b.SetSkip(0)
 	// 默认开启全部级别的日志记录
 	b.SetLevel(LevelTrace, LevelDebug, LevelInfo, LevelWarn, LevelError, LevelFatal)
+
 	// 初始化适配器
 	for _, v := range adapter {
 		err := b.SetAdapter(v)
@@ -98,8 +96,11 @@ func New(option Option, adapter ...Adapter) (Logger, error) {
 			return nil, err
 		}
 	}
-	// 返回日志示例指针
-	return b, nil
+
+	// 返回标准记录器
+	return &StandardBelog{
+		belog: b,
+	}, nil
 }
 
 // SetAdapter 设置日志记录适配器
@@ -118,6 +119,10 @@ func (b *belog) SetAdapter(adapter Adapter) error {
 		return errors.New("the return value of `Name()` is empty")
 	}
 
+	// 加个写锁
+	b.adaptersRWMutex.Lock()
+	defer b.adaptersRWMutex.Unlock()
+
 	// map为空需要初始化
 	if b.adapters == nil {
 		b.adapters = make(map[string]Adapter)
@@ -129,29 +134,34 @@ func (b *belog) SetAdapter(adapter Adapter) error {
 	return nil
 }
 
+// levelIsExist 判断日志级别是否在缓存中
+func (b *belog) levelIsExist(level Level) bool {
+	// 加个读锁
+	b.levelMapRWMutex.RLock()
+	defer b.levelMapRWMutex.RUnlock()
+
+	// 检查
+	_, ok := b.levelMap[level]
+	return ok
+}
+
 // SetLevel 设置日志记录保存级别
 //
 // @params val 日志记录级别（会覆盖上一次的级别配置）
-func (b *belog) SetLevel(val ...Level) Logger {
+func (b *belog) SetLevel(val ...Level) {
+	// 加个写锁
+	b.levelMapRWMutex.Lock()
+	defer b.levelMapRWMutex.Unlock()
+
 	// 置空，用于覆盖后续输入的级别
-	b.level = nil
+	b.levelMap = nil
 	// 初始化一下
-	b.level = make(map[Level]LevelChar)
+	b.levelMap = make(map[Level]LevelChar)
+
 	// 遍历输入的级别
 	for _, item := range val {
-		b.level[item] = levelMap[item]
+		b.levelMap[item] = levelMap[item]
 	}
-	return b
-}
-
-// PrintCallStack 是否记录调用栈
-//
-// 注意：开启调用栈打印将会损失部分性能
-//
-// @return 日志记录器实例
-func (b *belog) PrintCallStack() Logger {
-	b.printCallStack = true
-	return b
 }
 
 // SetSkip 配置需要向上捕获的函数栈层数
@@ -159,9 +169,8 @@ func (b *belog) PrintCallStack() Logger {
 // @params skip 需要跳过的函数栈层数
 //
 // @return 日志记录器实例
-func (b *belog) SetSkip(skip uint) Logger {
-	b.skip = 3 + skip
-	return b
+func (b *belog) SetSkip(skip uint) {
+	b.stackSkip = 3 + skip
 }
 
 // Flush 日志缓存刷新
@@ -184,53 +193,91 @@ func (b *belog) Flush() {
 	wg.Wait()
 }
 
-// singleAdaptersPrint 单适配器输出
-func (b *belog) singleAdaptersPrint(t time.Time, l Level, c []byte) {
-	// 遍历所有适配器
-	for _, adapter := range b.adapters {
-		// 不打印调用栈信息
-		adapter.Print(t, l, c)
+// adapterPrintFunc 适配器打印方法
+type adapterPrintFunc func(t time.Time, l Level, c []byte, fn []byte, ln int, mn []byte)
+
+// filterAdapterPrint 筛选合适的适配器
+func (b *belog) filterAdapterPrint() adapterPrintFunc {
+	// 是否为单适配器输出
+	if len(b.adapters) <= 1 {
+		// 单适配器输出
+		return b.singleAdapterPrint
+	}
+	// 多适配器并发输出
+	return b.multipleAdapterPrint
+}
+
+// singleAdapterPrint 单适配器含调用栈输出
+func (b *belog) singleAdapterPrint(t time.Time, l Level, c []byte, fn []byte, ln int, mn []byte) {
+	// 是否需要输出调用栈
+	if b.printCallStack {
+		// 遍历所有适配器
+		for _, adapter := range b.adapters {
+			adapter.PrintStack(t, l, c, fn, ln, mn)
+		}
+	} else {
+		// 遍历所有适配器
+		for _, adapter := range b.adapters {
+			adapter.Print(t, l, c)
+		}
 	}
 }
 
-// multipleAdaptersPrint 多适配器输出
-func (b *belog) multipleAdaptersPrint(t time.Time, l Level, c []byte) {
+// multipleAdapterPrint 多适配器含调用栈输出
+func (b *belog) multipleAdapterPrint(t time.Time, l Level, c []byte, fn []byte, ln int, mn []byte) {
 	// 协程等待分组（WaitFroup会增加1个开销）
 	var wg sync.WaitGroup
-	// 遍历所有适配器
-	for _, adapter := range b.adapters {
-		wg.Add(1)
-		go func(a Adapter) {
-			defer wg.Done()
-			a.Print(t, l, c)
-		}(adapter)
+
+	// 是否需要输出调用栈
+	if b.printCallStack {
+		// 遍历所有适配器
+		for _, adapter := range b.adapters {
+			wg.Add(1)
+			go func(a Adapter) {
+				defer wg.Done()
+				a.PrintStack(t, l, c, fn, ln, mn)
+			}(adapter)
+		}
+	} else {
+		// 遍历所有适配器
+		for _, adapter := range b.adapters {
+			wg.Add(1)
+			go func(a Adapter) {
+				defer wg.Done()
+				a.Print(t, l, c)
+			}(adapter)
+		}
 	}
+
 	// 等待所有适配器完成日志记录
 	wg.Wait()
 }
 
-// singleAdaptersStackPrint 单适配器含调用栈输出
-func (b *belog) singleAdaptersStackPrint(t time.Time, l Level, c []byte, fn []byte, ln int, mn []byte) {
-	// 遍历所有适配器
-	for _, adapter := range b.adapters {
-		adapter.PrintStack(t, l, c, fn, ln, mn)
-	}
-}
+// formatFunc 日志格式化方法类型
+type formatFunc func(currTime time.Time, level Level, content []byte)
 
-// multipleAdaptersStackPrint 多适配器含调用栈输出
-func (b *belog) multipleAdaptersStackPrint(t time.Time, l Level, c []byte, fn []byte, ln int, mn []byte) {
-	// 协程等待分组（WaitFroup会增加1个开销）
-	var wg sync.WaitGroup
-	// 遍历所有适配器
-	for _, adapter := range b.adapters {
-		wg.Add(1)
-		go func(a Adapter) {
-			defer wg.Done()
-			a.PrintStack(t, l, c, fn, ln, mn)
-		}(adapter)
+// filterFormat 筛选合适的日志格式化方法
+func (b *belog) filterFormat() formatFunc {
+	// 是否需要打印调用栈
+	if !b.printCallStack {
+		// 是否禁用JSON格式化输出
+		if b.disabledJsonFormat {
+			// 普通行序列化
+			return b.format
+		}
+
+		// 普通JSON序列化
+		return b.formatJSON
 	}
-	// 等待所有适配器完成日志记录
-	wg.Wait()
+
+	// 是否禁用JSON格式化输出
+	if b.disabledJsonFormat {
+		// 调用栈行序列化
+		return b.formatStack
+	}
+
+	// 调用栈JSON序列化
+	return b.formatStackJSON
 }
 
 // format 序列化行格式日志
@@ -270,14 +317,9 @@ func (b *belog) format(currTime time.Time, level Level, content []byte) {
 	logBytes = append(logBytes, content...)
 	logBytes = append(logBytes, "\r\n"...)
 
-	// 是否为多适配器输出
-	if len(b.adapters) > 1 {
-		// 多适配器并发输出
-		b.multipleAdaptersPrint(currTime, level, logBytes)
-	} else {
-		// 单适配器输出
-		b.singleAdaptersPrint(currTime, level, logBytes)
-	}
+	// 选择合适的适配器执行输出
+	adapterPrint := b.filterAdapterPrint()
+	adapterPrint(currTime, level, logBytes, nil, 0, nil)
 }
 
 // formatJSON 序列化JSON格式日志
@@ -325,14 +367,9 @@ func (b *belog) formatJSON(currTime time.Time, level Level, content []byte) {
 	logBytes = append(logBytes, content...)
 	logBytes = append(logBytes, "}\r\n"...)
 
-	// 是否为多适配器输出
-	if len(b.adapters) > 1 {
-		// 多适配器并发输出
-		b.multipleAdaptersPrint(currTime, level, logBytes)
-	} else {
-		// 单适配器输出
-		b.singleAdaptersPrint(currTime, level, logBytes)
-	}
+	// 选择合适的适配器执行输出
+	adapterPrint := b.filterAdapterPrint()
+	adapterPrint(currTime, level, logBytes, nil, 0, nil)
 }
 
 // formatStack 序列化带调用栈的行格式日志
@@ -352,7 +389,7 @@ func (b *belog) formatStack(currTime time.Time, level Level, content []byte) {
 	// const count = 6 + 1 + 3 + 3 + 2 = 15
 
 	// 获取调用栈信息
-	pc, fileName, lineNo, _ := runtime.Caller(int(b.skip))
+	pc, fileName, lineNo, _ := runtime.Caller(int(b.stackSkip))
 	// 转换文件名
 	fn := convert.StringToBytes(fileName)
 	// 裁剪为基础文件名
@@ -401,14 +438,9 @@ func (b *belog) formatStack(currTime time.Time, level Level, content []byte) {
 	logBytes = append(logBytes, content...)
 	logBytes = append(logBytes, "\r\n"...)
 
-	// 是否为多适配器输出
-	if len(b.adapters) > 1 {
-		// 含调用栈多适配器并发输出
-		b.multipleAdaptersStackPrint(currTime, level, logBytes, fn, lineNo, mn)
-	} else {
-		// 含调用栈单适配器输出
-		b.singleAdaptersStackPrint(currTime, level, logBytes, fn, lineNo, mn)
-	}
+	// 选择合适的适配器执行输出
+	adapterPrint := b.filterAdapterPrint()
+	adapterPrint(currTime, level, logBytes, fn, lineNo, mn)
 }
 
 // formatStackJSON 序列化带调用栈的JSON格式日志
@@ -431,7 +463,7 @@ func (b *belog) formatStackJSON(currTime time.Time, level Level, content []byte)
 	// const count = 2 + 4 + 4 + 9 + 5 + 4 + 4 + 3 + 3 + 4 + 4 + 3 = 49
 
 	// 获取调用栈信息
-	pc, fileName, lineNo, _ := runtime.Caller(int(b.skip))
+	pc, fileName, lineNo, _ := runtime.Caller(int(b.stackSkip))
 	// 转换文件名
 	fn := convert.StringToBytes(fileName)
 	// 裁剪为基础文件名
@@ -495,305 +527,7 @@ func (b *belog) formatStackJSON(currTime time.Time, level Level, content []byte)
 	logBytes = append(logBytes, content...)
 	logBytes = append(logBytes, "}\r\n"...)
 
-	// 是否为多适配器输出
-	if len(b.adapters) > 1 {
-		// 含调用栈多适配器并发输出
-		b.multipleAdaptersStackPrint(currTime, level, logBytes, fn, lineNo, mn)
-	} else {
-		// 含调用栈单适配器输出
-		b.singleAdaptersStackPrint(currTime, level, logBytes, fn, lineNo, mn)
-	}
-}
-
-// preCheck 常规日志前置判断和序列化
-//
-// @params level 日志级别
-//
-// @params format 序列化格式或内容
-//
-// @params val 待序列化内容
-func (b *belog) preCheck(level Level, format string, val ...interface{}) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[level]; !ok {
-		// 当前级别日志不需要记录
-		return
-	}
-
-	// 获取当前时间
-	currTime := time.Now()
-	// 数据容器
-	var logBytes []byte
-
-	// 是否禁用JSON格式输出
-	if b.disabledJsonFormat {
-		// 使用行格式输出
-
-		// 静态字符串时开启优化打印
-		if len(val) == 0 {
-			logBytes = convert.StringToBytes(format)
-		} else {
-			logBytes = convert.StringToBytes(fmt.Sprintf(format, val...))
-		}
-
-		// 是否需要打印调用栈
-		if b.printCallStack {
-			// 执行含调用栈输出行打印
-			b.formatStack(currTime, level, logBytes)
-		} else {
-			// 执行不含调用栈输出行打印
-			b.format(currTime, level, logBytes)
-		}
-
-	} else {
-		// 使用json格式输出
-
-		// 静态字符串时开启优化打印
-		if len(val) == 0 {
-			b.preCheckf(level, format)
-			return
-		}
-
-		// 是否满足(message string, val1 field.Field, val2 field.Field...)
-		var fields []field.Field
-		for _, v := range val {
-			// 是否为Field类型
-			if item, ok := v.(field.Field); ok {
-				fields = append(fields, item)
-			}
-		}
-		if len(fields) == len(val) {
-			// 使用高性能格式化输出
-			b.preCheckf(level, format, fields...)
-			return
-		}
-
-		// 是否满足(message string, key1 string, val1 interface{}, key2 string, val2 interface{}...)
-		fields = fields[:]
-		key := ""
-		for i, v := range val {
-			if i%2 == 0 {
-				if item, ok := v.(string); ok {
-					key = item
-				} else {
-					// 一旦匹配到偶数项不是字符串就立即跳出
-					break
-				}
-			} else {
-				fields = append(fields, field.Interface(key, v))
-			}
-		}
-		if len(fields) == len(val) {
-			// 使用高性能格式化输出
-			b.preCheckf(level, format, fields...)
-			return
-		}
-
-		// 格式化为json数据
-
-		// 使用标准库的JSON输出
-
-		// 是否需要打印调用栈
-		if b.printCallStack {
-			// 执行含调用栈输出JSON打印
-			b.formatStackJSON(currTime, level, logBytes)
-		} else {
-			// 执行不含调用栈输出JSON打印
-			b.formatJSON(currTime, level, logBytes)
-		}
-
-	}
-}
-
-// Trace 通知级别的日志
-//
-// @params format 序列化格式或内容
-//
-// @params val 待序列化内容
-func (b *belog) Trace(format string, val ...interface{}) {
-	b.preCheck(LevelTrace, format, val...)
-}
-
-// Debug 调试级别的日志
-//
-// @params format 序列化格式或内容
-//
-// @params val 待序列化内容
-func (b *belog) Debug(format string, val ...interface{}) {
-	b.preCheck(LevelDebug, format, val...)
-}
-
-// Info 普通级别的日志
-//
-// @params format 序列化格式或内容
-//
-// @params val 待序列化内容
-func (b *belog) Info(format string, val ...interface{}) {
-	b.preCheck(LevelInfo, format, val...)
-}
-
-// Warn 警告级别的日志
-//
-// @params format 序列化格式或内容
-//
-// @params val 待序列化内容
-func (b *belog) Warn(format string, val ...interface{}) {
-	b.preCheck(LevelWarn, format, val...)
-}
-
-// Error 错误级别的日志
-//
-// @params format 序列化格式或内容
-//
-// @params val 待序列化内容
-func (b *belog) Error(format string, val ...interface{}) {
-	b.preCheck(LevelError, format, val...)
-}
-
-// Fatal 致命级别的日志
-//
-// @params format 序列化格式或内容
-//
-// @params val 待序列化内容
-func (b *belog) Fatal(format string, val ...interface{}) {
-	b.preCheck(LevelFatal, format, val...)
-}
-
-// preCheck 高性能日志前置判断和序列化
-//
-// @params level 日志级别
-//
-// @params message 日志消息
-//
-// @params val 字段信息
-func (b *belog) preCheckf(level Level, message string, val ...field.Field) {
-	// 判断当前级别日志是否需要记录
-	if _, ok := b.level[level]; !ok {
-		// 当前级别日志不需要记录
-		return
-	}
-
-	// 获取当前时间
-	currTime := time.Now()
-
-	// 是否禁用json序列化格式输出
-	if b.disabledJsonFormat {
-		// 结构化为:
-		//
-		// = 固定长度
-		// + 动态长度
-		//
-		// k1: v1, k2: v2, ..., this is test message
-		// +++++++++++++++++++++++++++++++++++++++++
-		//
-		// 全是动态长度
-
-		// 计算byte大小
-		size := len(message)
-		for _, v := range val {
-			// key: 10,  => "": => 4个字节
-			// 每个键和值之间有一个冒号和一个空格 => 2个字节
-			// 每个值后面有一个逗号和一个空格 => 2个字节
-			size += 4 + len(v.KeyBytes) + len(v.ValBytes)
-		}
-
-		// 从对象池中获取一个日志字节流对象
-		logBytes := logBytesPool.Get()
-		// 用完后字节切片放回复用池
-		defer func() {
-			logBytesPool.Put(logBytes)
-		}()
-
-		// 判读对象容量是否足够
-		if cap(logBytes) < size {
-			logBytes = make([]byte, 0, size)
-		}
-
-		// 将字段和消息拼接为行格式
-		logBytes = field.Append(logBytes, message, val...)
-
-		// 是否需要打印调用栈
-		if b.printCallStack {
-			// 执行含调用栈输出行打印
-			b.formatStack(currTime, level, logBytes)
-		} else {
-			// 执行不含调用栈输出行打印
-			b.format(currTime, level, logBytes)
-		}
-
-	} else {
-		// 结构化为:
-		//
-		// = 固定长度
-		// + 动态长度
-		//
-		// "$(fields)": {$("k1": v1, "k2": "v2", ...)}, "$(message)": "this is test message"
-		// =+++++++++====++++++++++++++++++++++++++++====++++++++++====++++++++++++++++++++=
-		// 1 len(fk)   4      sum(len(field)...)       4   len(mk)   4        len(m)       1
-		//
-		// const count = 1 + 4 + 4 + 4 + 1 = 14
-
-		// 计算Byte大小
-		size := 14 + len(b.fieldsJsonKey) + len(b.messageJsonKey) + len(message)
-		for _, v := range val {
-			// "key": 10 => "": => 4个字节
-			// 每个键有两个双引号包裹 => 2个字节
-			// 每个键和值之间有一个冒号和一个空格 => 2个字节
-			size += 4 + len(v.KeyBytes) + len(v.ValPrefixBytes) + len(v.ValBytes) + len(v.ValSuffixBytes)
-		}
-
-		// 从对象池中获取一个日志字节流对象
-		logBytes := logBytesPool.Get()
-		// 用完后字节切片放回复用池
-		defer func() {
-			logBytesPool.Put(logBytes)
-		}()
-
-		// 判读对象容量是否足够
-		if cap(logBytes) < size {
-			logBytes = make([]byte, 0, size)
-		}
-
-		// 将字段和消息拼接为json格式
-		logBytes = field.AppendJSON(logBytes, b.fieldsJsonKey, b.messageJsonKey, false, message, val...)
-
-		// 是否需要打印调用栈
-		if b.printCallStack {
-			// 执行含调用栈输出JSON打印
-			b.formatStackJSON(currTime, level, logBytes)
-		} else {
-			// 执行不含调用栈输出JSON打印
-			b.formatJSON(currTime, level, logBytes)
-		}
-
-	}
-}
-
-// Tracef 通知级别的日志（高性能序列化）
-func (b *belog) Tracef(message string, val ...field.Field) {
-	b.preCheckf(LevelTrace, message, val...)
-}
-
-// Debugf 调试级别的日志（高性能序列化）
-func (b *belog) Debugf(message string, val ...field.Field) {
-	b.preCheckf(LevelDebug, message, val...)
-}
-
-// Infof 普通级别的日志（高性能序列化）
-func (b *belog) Infof(message string, val ...field.Field) {
-	b.preCheckf(LevelInfo, message, val...)
-}
-
-// Warnf 警告级别的日志（高性能序列化）
-func (b *belog) Warnf(message string, val ...field.Field) {
-	b.preCheckf(LevelWarn, message, val...)
-}
-
-// Errorf 错误级别的日志（高性能序列化）
-func (b *belog) Errorf(message string, val ...field.Field) {
-	b.preCheckf(LevelError, message, val...)
-}
-
-// Fatalf 致命级别的日志（高性能序列化）
-func (b *belog) Fatalf(message string, val ...field.Field) {
-	b.preCheckf(LevelFatal, message, val...)
+	// 选择合适的适配器执行输出
+	adapterPrint := b.filterAdapterPrint()
+	adapterPrint(currTime, level, logBytes, fn, lineNo, mn)
 }

@@ -45,25 +45,33 @@ type Adapter interface {
 	Flush()
 }
 
-// Logger 日志接口
-type Logger interface {
+// BaseLogger 基础日志接口
+type BaseLogger interface {
 	SetAdapter(Adapter) error // 适配器设置
-	SetLevel(...Level) Logger // 日志级别设置
-	PrintCallStack() Logger   // 开启调用栈打印
-	SetSkip(uint) Logger      // 函数栈配置
+	SetLevel(...Level)        // 日志级别设置
+	SetSkip(uint)             // 函数栈配置
 	Flush()                   // 日志缓存刷新
+}
 
+// Logger 标准日志接口
+type Logger interface {
+	BaseLogger
+	GetSugarLogger() SugarLogger  // 获取语法糖记录器
+	Trace(string, ...field.Field) // 通知级别的日志（高性能序列化）
+	Debug(string, ...field.Field) // 调试级别的日志（高性能序列化）
+	Info(string, ...field.Field)  // 普通级别的日志（高性能序列化）
+	Warn(string, ...field.Field)  // 警告级别的日志（高性能序列化）
+	Error(string, ...field.Field) // 错误级别的日志（高性能序列化）
+	Fatal(string, ...field.Field) // 致命级别的日志（高性能序列化）
+}
+
+// SugarLogger 语法糖日志接口
+type SugarLogger interface {
+	BaseLogger
 	Trace(string, ...interface{}) // 通知级别的日志
 	Debug(string, ...interface{}) // 调试级别的日志
 	Info(string, ...interface{})  // 普通级别的日志
 	Warn(string, ...interface{})  // 警告级别的日志
 	Error(string, ...interface{}) // 错误级别的日志
 	Fatal(string, ...interface{}) // 致命级别的日志
-
-	Tracef(string, ...field.Field) // 通知级别的日志（高性能序列化）
-	Debugf(string, ...field.Field) // 调试级别的日志（高性能序列化）
-	Infof(string, ...field.Field)  // 普通级别的日志（高性能序列化）
-	Warnf(string, ...field.Field)  // 警告级别的日志（高性能序列化）
-	Errorf(string, ...field.Field) // 错误级别的日志（高性能序列化）
-	Fatalf(string, ...field.Field) // 致命级别的日志（高性能序列化）
 }
