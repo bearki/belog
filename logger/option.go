@@ -82,42 +82,42 @@ func getValidOption(option Option) Option {
 
 	// 时间的JSON键名是否使用默认值
 	if len(option.TimeJsonKey) == 0 {
-		option.TimeFormat = defaultOption.TimeJsonKey
+		option.TimeJsonKey = defaultOption.TimeJsonKey
 	}
 
 	// 日志级别的JSON键名是否使用默认值
 	if len(option.LevelJsonKey) == 0 {
-		option.TimeFormat = defaultOption.LevelJsonKey
+		option.LevelJsonKey = defaultOption.LevelJsonKey
 	}
 
 	// 调用栈信息JSON键名是否使用默认值
 	if len(option.StackJsonKey) == 0 {
-		option.TimeFormat = defaultOption.StackJsonKey
+		option.StackJsonKey = defaultOption.StackJsonKey
 	}
 
 	// 调用栈文件名JSON键名是否使用默认值
 	if len(option.StackFileJsonKey) == 0 {
-		option.TimeFormat = defaultOption.StackFileJsonKey
+		option.StackFileJsonKey = defaultOption.StackFileJsonKey
 	}
 
 	// 调用栈文件行号JSON键名是否使用默认值
 	if len(option.StackLineNoJsonKey) == 0 {
-		option.TimeFormat = defaultOption.StackLineNoJsonKey
+		option.StackLineNoJsonKey = defaultOption.StackLineNoJsonKey
 	}
 
 	// 调用栈函数名JSON键名是否使用默认值
 	if len(option.StackMethodJsonKey) == 0 {
-		option.TimeFormat = defaultOption.StackMethodJsonKey
+		option.StackMethodJsonKey = defaultOption.StackMethodJsonKey
 	}
 
 	// 字段集JSON键名是否使用默认值
 	if len(option.FieldsJsonKey) == 0 {
-		option.TimeFormat = defaultOption.FieldsJsonKey
+		option.FieldsJsonKey = defaultOption.FieldsJsonKey
 	}
 
 	// 日志消息JSON键名是否使用默认值
 	if len(option.MessageJsonKey) == 0 {
-		option.TimeFormat = defaultOption.MessageJsonKey
+		option.MessageJsonKey = defaultOption.MessageJsonKey
 	}
 
 	// OK,参数校验完成

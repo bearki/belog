@@ -13,6 +13,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/bearki/belog/v2/level"
 	"github.com/bearki/belog/v2/logger"
 )
 
@@ -35,19 +36,19 @@ var (
 )
 
 // GetLevelConsoleColorBytes 获取日志级别对应的控制台颜色字节表
-func GetLevelConsoleColorBytes(l logger.Level) []byte {
+func GetLevelConsoleColorBytes(l level.Level) []byte {
 	switch l {
-	case logger.LevelTrace: // 通知级别(灰色)
+	case level.Trace: // 通知级别(灰色)
 		return colorGrayStartBytes[:]
-	case logger.LevelDebug: // 调试级别(蓝色)
+	case level.Debug: // 调试级别(蓝色)
 		return colorBlueStartBytes[:]
-	case logger.LevelInfo: // 普通级别(绿色)
+	case level.Info: // 普通级别(绿色)
 		return colorGreenStartBytes[:]
-	case logger.LevelWarn: // 警告级别(黄色)
+	case level.Warn: // 警告级别(黄色)
 		return colorYellowStartBytes[:]
-	case logger.LevelError: // 错误级别(红色)
+	case level.Error: // 错误级别(红色)
 		return colorRedStartBytes[:]
-	case logger.LevelFatal: // 紧急级别(洋红色)
+	case level.Fatal: // 紧急级别(洋红色)
 		return colorMagentaStartBytes[:]
 	default:
 		return nil
@@ -93,7 +94,7 @@ func (e *Adapter) Name() string {
 // @params level 日志级别
 //
 // @params content 日志内容
-func (e *Adapter) Print(_ time.Time, level logger.Level, content []byte) {
+func (e *Adapter) Print(_ time.Time, level level.Level, content []byte) {
 	// 是否禁用颜色
 	if !e.disabledColor {
 		oldBytes := []byte{'[', level.GetLevelChar(), ']'}
@@ -136,7 +137,7 @@ func (e *Adapter) Print(_ time.Time, level logger.Level, content []byte) {
 // @params lineNo 日志记录调用文件行号
 //
 // @params methodName 日志记录调用函数名
-func (e *Adapter) PrintStack(_ time.Time, level logger.Level, content []byte, _ []byte, _ int, _ []byte) {
+func (e *Adapter) PrintStack(_ time.Time, level level.Level, content []byte, _ []byte, _ int, _ []byte) {
 	// 是否禁用颜色
 	if !e.disabledColor {
 		oldBytes := []byte{'[', level.GetLevelChar(), ']'}

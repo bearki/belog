@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/bearki/belog/v2/field"
+	"github.com/bearki/belog/v2/level"
 )
 
 // Adapter 适配器接口
@@ -20,7 +21,7 @@ type Adapter interface {
 	// @params level 日志级别
 	//
 	// @params content 日志内容
-	Print(logTime time.Time, level Level, content []byte)
+	Print(logTime time.Time, level level.Level, content []byte)
 
 	// PrintStack 调用栈日志打印方法
 	//
@@ -35,7 +36,7 @@ type Adapter interface {
 	// @params lineNo 日志记录调用文件行号
 	//
 	// @params methodName 日志记录调用函数名
-	PrintStack(logTime time.Time, level Level, content []byte, fileName []byte, lineNo int, methodName []byte)
+	PrintStack(logTime time.Time, level level.Level, content []byte, fileName []byte, lineNo int, methodName []byte)
 
 	// Flush 日志缓存刷新
 	//
@@ -48,7 +49,7 @@ type Adapter interface {
 // BaseLogger 基础日志接口
 type BaseLogger interface {
 	SetAdapter(Adapter) error // 适配器设置
-	SetLevel(...Level)        // 日志级别设置
+	SetLevel(...level.Level)  // 日志级别设置
 	SetSkip(uint)             // 函数栈配置
 	Flush()                   // 日志缓存刷新
 }

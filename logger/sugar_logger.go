@@ -13,6 +13,7 @@ import (
 
 	field2 "github.com/bearki/belog/v2/field"
 	"github.com/bearki/belog/v2/internal/convert"
+	"github.com/bearki/belog/v2/level"
 )
 
 // SugarBelog 语法糖记录器
@@ -21,21 +22,15 @@ type SugarBelog struct {
 }
 
 // check 常规日志前置判断和序列化
-//
-// @params level 日志级别
-//
-// @params format 序列化格式或内容
-//
-// @params val 待序列化内容
-func (s *SugarBelog) check(level Level, message string, val ...interface{}) {
+func (s *SugarBelog) check(l level.Level, msg string, val ...interface{}) {
 	// 判断当前级别日志是否需要记录
-	if !s.levelIsExist(level) {
+	if !s.levelIsExist(l) {
 		// 当前级别日志不需要记录
 		return
 	}
 
 	// 获取当前时间
-	currTime := time.Now()
+	now := time.Now()
 	// 数据容器
 	var logBytes []byte
 
@@ -45,9 +40,9 @@ func (s *SugarBelog) check(level Level, message string, val ...interface{}) {
 
 		// 静态字符串时开启优化打印
 		if len(val) == 0 {
-			logBytes = convert.StringToBytes(message)
+			logBytes = convert.StringToBytes(msg)
 		} else {
-			logBytes = convert.StringToBytes(fmt.Sprintf(message, val...))
+			logBytes = convert.StringToBytes(fmt.Sprintf(msg, val...))
 		}
 	} else {
 		// 获取标准记录器
@@ -57,11 +52,11 @@ func (s *SugarBelog) check(level Level, message string, val ...interface{}) {
 
 		// 静态字符串时开启优化打印
 		if len(val) == 0 {
-			// stdLogger.preCheck(level, message)
+			// stdLogger.preCheck(l, msg)
 			return
 		}
 
-		// 是否满足(message string, val1 field.Field, val2 field.Field...)
+		// 是否满足(msg string, val1 field.Field, val2 field.Field...)
 		var fields []field2.Field
 		for _, v := range val {
 			// 是否为Field类型
@@ -71,11 +66,11 @@ func (s *SugarBelog) check(level Level, message string, val ...interface{}) {
 		}
 		if len(fields) == len(val) {
 			// 使用高性能格式化输出
-			// stdLogger.preCheck(level, message, fields...)
+			// stdLogger.preCheck(l, msg, fields...)
 			return
 		}
 
-		// 是否满足(message string, key1 string, val1 interface{}, key2 string, val2 interface{}...)
+		// 是否满足(msg string, key1 string, val1 interface{}, key2 string, val2 interface{}...)
 		fields = fields[:]
 		key := ""
 		for i, v := range val {
@@ -92,7 +87,7 @@ func (s *SugarBelog) check(level Level, message string, val ...interface{}) {
 		}
 		if len(fields) == len(val) {
 			// 使用高性能格式化输出
-			// s.preCheck(level, message, fields...)
+			// s.preCheck(l, msg, fields...)
 			return
 		}
 
@@ -103,59 +98,35 @@ func (s *SugarBelog) check(level Level, message string, val ...interface{}) {
 
 	// 筛选合适的序列化方法执行序列化打印输出
 	format := s.filterFormat()
-	format(currTime, level, logBytes)
+	format(now, l, logBytes)
 }
 
 // Trace 通知级别的日志
-//
-// @params format 序列化格式或内容
-//
-// @params val 待序列化内容
-func (s *SugarBelog) Trace(format string, val ...interface{}) {
-	s.check(LevelTrace, format, val...)
+func (s *SugarBelog) Trace(msg string, val ...interface{}) {
+	s.check(level.Trace, msg, val...)
 }
 
 // Debug 调试级别的日志
-//
-// @params format 序列化格式或内容
-//
-// @params val 待序列化内容
-func (s *SugarBelog) Debug(format string, val ...interface{}) {
-	s.check(LevelDebug, format, val...)
+func (s *SugarBelog) Debug(msg string, val ...interface{}) {
+	s.check(level.Debug, msg, val...)
 }
 
 // Info 普通级别的日志
-//
-// @params format 序列化格式或内容
-//
-// @params val 待序列化内容
-func (s *SugarBelog) Info(format string, val ...interface{}) {
-	s.check(LevelInfo, format, val...)
+func (s *SugarBelog) Info(msg string, val ...interface{}) {
+	s.check(level.Info, msg, val...)
 }
 
 // Warn 警告级别的日志
-//
-// @params format 序列化格式或内容
-//
-// @params val 待序列化内容
-func (s *SugarBelog) Warn(format string, val ...interface{}) {
-	s.check(LevelWarn, format, val...)
+func (s *SugarBelog) Warn(msg string, val ...interface{}) {
+	s.check(level.Warn, msg, val...)
 }
 
 // Error 错误级别的日志
-//
-// @params format 序列化格式或内容
-//
-// @params val 待序列化内容
-func (s *SugarBelog) Error(format string, val ...interface{}) {
-	s.check(LevelError, format, val...)
+func (s *SugarBelog) Error(msg string, val ...interface{}) {
+	s.check(level.Error, msg, val...)
 }
 
 // Fatal 致命级别的日志
-//
-// @params format 序列化格式或内容
-//
-// @params val 待序列化内容
-func (s *SugarBelog) Fatal(format string, val ...interface{}) {
-	s.check(LevelFatal, format, val...)
+func (s *SugarBelog) Fatal(msg string, val ...interface{}) {
+	s.check(level.Fatal, msg, val...)
 }

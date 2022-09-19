@@ -26,7 +26,9 @@ func NewBytesPool(maxNum int, initLen int, initCap int) *BytesPool {
 		bsc: initCap,
 	}
 	if maxNum > 0 {
-		bp.bpc <- make([]byte, initLen, initCap)
+		for i := 0; i < 10; i++ {
+			bp.bpc <- make([]byte, initLen, initCap)
+		}
 	}
 	return bp
 }

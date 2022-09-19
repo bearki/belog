@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/bearki/belog/v2/internal/pool"
+	"github.com/bearki/belog/v2/level"
 	"github.com/bearki/belog/v2/logger"
 )
 
@@ -215,7 +216,7 @@ func (e *Adapter) Name() string {
 // @params l 日志级别
 //
 // @params c 日志内容
-func (e *Adapter) Print(_ time.Time, _ logger.Level, c []byte) {
+func (e *Adapter) Print(_ time.Time, _ level.Level, c []byte) {
 	// 从对象池获取切片
 	logSlice := e.logBytesPool.Get()
 	// 检查是否需要扩容
@@ -241,7 +242,7 @@ func (e *Adapter) Print(_ time.Time, _ logger.Level, c []byte) {
 // @params ln 日志记录调用文件行号
 //
 // @params mn 日志记录调用函数名
-func (e *Adapter) PrintStack(_ time.Time, _ logger.Level, c []byte, _ []byte, _ int, _ []byte) {
+func (e *Adapter) PrintStack(_ time.Time, _ level.Level, c []byte, _ []byte, _ int, _ []byte) {
 	// 从对象池获取切片
 	logSlice := e.logBytesPool.Get()
 	// 检查是否需要扩容

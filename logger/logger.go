@@ -8,37 +8,37 @@
 package logger
 
 import (
-	"bytes"
 	"errors"
-	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/bearki/belog/v2/internal/convert"
+	"github.com/bearki/belog/v2/encoder"
 	"github.com/bearki/belog/v2/internal/pool"
+	"github.com/bearki/belog/v2/level"
 )
 
-// 日志字节流对象池
-var logBytesPool = pool.NewBytesPool(100, 0, 1024)
+var (
+	// 需要跳过的最少调用栈层数
+	//
+	// 该值由belog内部自定义，外部无需关心
+	stackBaseSkip uint = 3
+
+	// 日志字节流对象池
+	logBytesPool = pool.NewBytesPool(100, 0, 1024)
+)
 
 // belog 标准记录器
 type belog struct {
-	// 需要跳过的调用栈栈层数
-	// 该值会自动加3，以便于实例化用户可直接使用
-	// 【示例】
-	// 0：runtime.Caller函数的执行位置（在belog包内）
-	// 1：belog各级别方法实现位置（在belog包内）
-	// 2：belog实例调用各级别日志函数位置，依此类推】
+	// 需要跳过的调用栈层数
 	stackSkip uint
 
 	// 缓存映射配置
 
-	levelMapRWMutex sync.RWMutex        // 日志级别配置读写锁
-	levelMap        map[Level]LevelChar // 需要记录的日志级别字符映射
-	adaptersRWMutex sync.RWMutex        // 适配器配置读写锁
-	adapters        map[string]Adapter  // 适配器缓存映射
+	levelMapRWMutex sync.RWMutex               // 日志级别配置读写锁
+	levelMap        map[level.Level]level.Char // 需要记录的日志级别字符映射
+	adaptersRWMutex sync.RWMutex               // 适配器配置读写锁
+	adapters        map[string]Adapter         // 适配器缓存映射
 
 	// 功能配置
 
@@ -67,31 +67,35 @@ type belog struct {
 //
 // @return 日志记录器实例
 func New(option Option, adapter ...Adapter) (Logger, error) {
-	// 初始化日志记录器对象
-	b := new(belog)
-
 	// 获取有效参数
 	option = getValidOption(option)
-	b.printCallStack = option.PrintCallStack
-	b.disabledJsonFormat = option.DisabledJsonFormat
-	b.timeFormat = option.TimeFormat
-	b.timeJsonKey = option.TimeJsonKey
-	b.levelJsonKey = option.LevelJsonKey
-	b.stackJsonKey = option.StackJsonKey
-	b.stackFileJsonKey = option.StackFileJsonKey
-	b.stackLineNoJsonKey = option.StackLineNoJsonKey
-	b.stackMethodJsonKey = option.StackMethodJsonKey
-	b.fieldsJsonKey = option.FieldsJsonKey
-	b.messageJsonKey = option.MessageJsonKey
 
-	// 默认不需要跳过函数堆栈
-	b.SetSkip(0)
+	// 初始化日志记录器对象
+	bl := &belog{
+		stackSkip:          stackBaseSkip, // 初始为默认最小跳过层数
+		levelMap:           nil,
+		printCallStack:     option.PrintCallStack,
+		disabledJsonFormat: option.DisabledJsonFormat,
+		timeFormat:         option.TimeFormat,
+		timeJsonKey:        option.TimeJsonKey,
+		levelJsonKey:       option.LevelJsonKey,
+		stackJsonKey:       option.StackJsonKey,
+		stackFileJsonKey:   option.StackFileJsonKey,
+		stackLineNoJsonKey: option.StackLineNoJsonKey,
+		stackMethodJsonKey: option.StackMethodJsonKey,
+		fieldsJsonKey:      option.FieldsJsonKey,
+		messageJsonKey:     option.MessageJsonKey,
+	}
+
 	// 默认开启全部级别的日志记录
-	b.SetLevel(LevelTrace, LevelDebug, LevelInfo, LevelWarn, LevelError, LevelFatal)
+	bl.SetLevel(
+		level.Trace, level.Debug, level.Info,
+		level.Warn, level.Error, level.Fatal,
+	)
 
 	// 初始化适配器
 	for _, v := range adapter {
-		err := b.SetAdapter(v)
+		err := bl.SetAdapter(v)
 		if err != nil {
 			return nil, err
 		}
@@ -99,7 +103,7 @@ func New(option Option, adapter ...Adapter) (Logger, error) {
 
 	// 返回标准记录器
 	return &StandardBelog{
-		belog: b,
+		belog: bl,
 	}, nil
 }
 
@@ -111,7 +115,7 @@ func New(option Option, adapter ...Adapter) (Logger, error) {
 func (b *belog) SetAdapter(adapter Adapter) error {
 	// 适配器是否为空
 	if adapter == nil {
-		return errors.New("the address of `adapter` is a null pointer")
+		return errors.New("the address of `adapter` is adapter null pointer")
 	}
 
 	// 适配器名称不能为空
@@ -135,20 +139,20 @@ func (b *belog) SetAdapter(adapter Adapter) error {
 }
 
 // levelIsExist 判断日志级别是否在缓存中
-func (b *belog) levelIsExist(level Level) bool {
+func (b *belog) levelIsExist(l level.Level) bool {
 	// 加个读锁
 	b.levelMapRWMutex.RLock()
 	defer b.levelMapRWMutex.RUnlock()
 
 	// 检查
-	_, ok := b.levelMap[level]
+	_, ok := b.levelMap[l]
 	return ok
 }
 
 // SetLevel 设置日志记录保存级别
 //
 // @params val 日志记录级别（会覆盖上一次的级别配置）
-func (b *belog) SetLevel(val ...Level) {
+func (b *belog) SetLevel(ls ...level.Level) {
 	// 加个写锁
 	b.levelMapRWMutex.Lock()
 	defer b.levelMapRWMutex.Unlock()
@@ -156,11 +160,11 @@ func (b *belog) SetLevel(val ...Level) {
 	// 置空，用于覆盖后续输入的级别
 	b.levelMap = nil
 	// 初始化一下
-	b.levelMap = make(map[Level]LevelChar)
+	b.levelMap = make(map[level.Level]level.Char)
 
 	// 遍历输入的级别
-	for _, item := range val {
-		b.levelMap[item] = levelMap[item]
+	for _, l := range ls {
+		b.levelMap[l] = l.GetLevelChar()
 	}
 }
 
@@ -170,7 +174,7 @@ func (b *belog) SetLevel(val ...Level) {
 //
 // @return 日志记录器实例
 func (b *belog) SetSkip(skip uint) {
-	b.stackSkip = 3 + skip
+	b.stackSkip = stackBaseSkip + skip
 }
 
 // Flush 日志缓存刷新
@@ -194,7 +198,7 @@ func (b *belog) Flush() {
 }
 
 // adapterPrintFunc 适配器打印方法
-type adapterPrintFunc func(t time.Time, l Level, c []byte, fn []byte, ln int, mn []byte)
+type adapterPrintFunc func(t time.Time, l level.Level, c []byte, fn []byte, ln int, mn []byte)
 
 // filterAdapterPrint 筛选合适的适配器
 func (b *belog) filterAdapterPrint() adapterPrintFunc {
@@ -208,7 +212,7 @@ func (b *belog) filterAdapterPrint() adapterPrintFunc {
 }
 
 // singleAdapterPrint 单适配器含调用栈输出
-func (b *belog) singleAdapterPrint(t time.Time, l Level, c []byte, fn []byte, ln int, mn []byte) {
+func (b *belog) singleAdapterPrint(t time.Time, l level.Level, c []byte, fn []byte, ln int, mn []byte) {
 	// 是否需要输出调用栈
 	if b.printCallStack {
 		// 遍历所有适配器
@@ -224,8 +228,8 @@ func (b *belog) singleAdapterPrint(t time.Time, l Level, c []byte, fn []byte, ln
 }
 
 // multipleAdapterPrint 多适配器含调用栈输出
-func (b *belog) multipleAdapterPrint(t time.Time, l Level, c []byte, fn []byte, ln int, mn []byte) {
-	// 协程等待分组（WaitFroup会增加1个开销）
+func (b *belog) multipleAdapterPrint(t time.Time, l level.Level, c []byte, fn []byte, ln int, mn []byte) {
+	// 协程等待分组（WaitGroup会增加1个开销）
 	var wg sync.WaitGroup
 
 	// 是否需要输出调用栈
@@ -254,7 +258,7 @@ func (b *belog) multipleAdapterPrint(t time.Time, l Level, c []byte, fn []byte, 
 }
 
 // formatFunc 日志格式化方法类型
-type formatFunc func(currTime time.Time, level Level, content []byte)
+type formatFunc func(time.Time, level.Level, []byte)
 
 // filterFormat 筛选合适的日志格式化方法
 func (b *belog) filterFormat() formatFunc {
@@ -289,7 +293,7 @@ func (b *belog) filterFormat() formatFunc {
 // 打印格式：
 //
 // 2022/09/14 20:28:13.793 [T]  k1: v1, k2: v2, ..., message\r\n
-func (b *belog) format(currTime time.Time, level Level, content []byte) {
+func (b *belog) format(t time.Time, l level.Level, c []byte) {
 	// 2022/09/14 20:28:13.793 [T]  k1: v1, k2: v2, ..., message\r\n
 	// +++++++++++++++++++++++======++++++++++++++++++++++++++++====
 	//        len(tf)           6               len(c)            2
@@ -297,7 +301,8 @@ func (b *belog) format(currTime time.Time, level Level, content []byte) {
 	// const count = 8
 
 	// 计算大小
-	size := 8 + len(b.timeFormat) + len(content)
+	size := 8 + len(b.timeFormat) + len(c)
+
 	// 从对象池中获取一个日志字节流对象
 	logBytes := logBytesPool.Get()
 	defer func() {
@@ -310,16 +315,16 @@ func (b *belog) format(currTime time.Time, level Level, content []byte) {
 	}
 
 	// 开始追加内容
-	logBytes = currTime.AppendFormat(logBytes, b.timeFormat)
-	logBytes = append(logBytes, ` [`...)
-	logBytes = append(logBytes, level.GetLevelChar())
-	logBytes = append(logBytes, `]  `...)
-	logBytes = append(logBytes, content...)
+	logBytes = encoder.AppendTime(logBytes, t, b.timeFormat)
+	logBytes = append(logBytes, ' ')
+	logBytes = encoder.AppendLevel(logBytes, l)
+	logBytes = append(logBytes, ' ', ' ')
+	logBytes = append(logBytes, c...)
 	logBytes = append(logBytes, "\r\n"...)
 
 	// 选择合适的适配器执行输出
 	adapterPrint := b.filterAdapterPrint()
-	adapterPrint(currTime, level, logBytes, nil, 0, nil)
+	adapterPrint(t, l, logBytes, nil, 0, nil)
 }
 
 // formatJSON 序列化JSON格式日志
@@ -331,18 +336,19 @@ func (b *belog) format(currTime time.Time, level Level, content []byte) {
 // 打印格式：
 //
 // {"$(timeKey)": "$(2006/01/02 15:04:05.000)", "$(levelKey)": "D", $(content)}\r\n
-func (b *belog) formatJSON(currTime time.Time, level Level, content []byte) {
+func (b *belog) formatJSON(t time.Time, l level.Level, c []byte) {
 	// = 固定长度
 	// + 动态长度
 	//
-	// {"$(timeKey)": "$(2006/01/02 15:04:05.000)", "$(levelKey)": "D", $(content)}\r\n
+	// {"$(timeKey)": "$(2006/01/02 15:04:05.000)", "$(levelKey)": "D", $(c)}\r\n
 	// ==++++++++++====++++++++++++++++++++++++++====+++++++++++========++++++++++=====
 	// 2   len(tk)   4         len(tf)             4   len(lk)     8      len(c)    3
 	//
 	// const count = 2 + 4 + 4 + 8 + 3 = 21
 
 	// 计算大小
-	size := 21 + len(b.timeJsonKey) + len(b.timeFormat) + len(b.levelJsonKey) + len(content)
+	size := 21 + len(b.timeJsonKey) + len(b.timeFormat) + len(b.levelJsonKey) + len(c)
+
 	// 从对象池中获取一个日志字节流对象
 	logBytes := logBytesPool.Get()
 	defer func() {
@@ -355,21 +361,17 @@ func (b *belog) formatJSON(currTime time.Time, level Level, content []byte) {
 	}
 
 	// 开始追加内容
-	logBytes = append(logBytes, `{"`...)
-	logBytes = append(logBytes, b.timeJsonKey...)
-	logBytes = append(logBytes, `": "`...)
-	logBytes = currTime.AppendFormat(logBytes, b.timeFormat)
-	logBytes = append(logBytes, `", "`...)
-	logBytes = append(logBytes, b.levelJsonKey...)
-	logBytes = append(logBytes, `": "`...)
-	logBytes = append(logBytes, level.GetLevelChar())
-	logBytes = append(logBytes, `", `...)
-	logBytes = append(logBytes, content...)
+	logBytes = append(logBytes, `{`...)
+	logBytes = encoder.AppendTimeJSON(logBytes, b.timeJsonKey, t, b.timeFormat)
+	logBytes = append(logBytes, `, `...)
+	logBytes = encoder.AppendLevelJSON(logBytes, b.levelJsonKey, l)
+	logBytes = append(logBytes, `, `...)
+	logBytes = append(logBytes, c...)
 	logBytes = append(logBytes, "}\r\n"...)
 
 	// 选择合适的适配器执行输出
 	adapterPrint := b.filterAdapterPrint()
-	adapterPrint(currTime, level, logBytes, nil, 0, nil)
+	adapterPrint(t, l, logBytes, nil, 0, nil)
 }
 
 // formatStack 序列化带调用栈的行格式日志
@@ -381,7 +383,7 @@ func (b *belog) formatJSON(currTime time.Time, level Level, content []byte) {
 // 打印格式：
 //
 // 2022/09/14 20:28:13.793 [T] [belog_test.go:10000000000] [PrintLogTest]  k1: v1, k2: v2, ..., message\r\n
-func (b *belog) formatStack(currTime time.Time, level Level, content []byte) {
+func (b *belog) formatStack(t time.Time, l level.Level, c []byte) {
 	// 2022/09/14 20:28:13.793 [T] [belog_test.go:10000000000] [PrintLogTest]  k1: v1, k2: v2, ..., message\r\n
 	// +++++++++++++++++++++++======+++++++++++++=+++++++++++===++++++++++++===++++++++++++++++++++++++++++====
 	//        len(tf)           6      len(fn)   1  len(ln)   3    len(mn)   3              len(c)           2
@@ -389,30 +391,12 @@ func (b *belog) formatStack(currTime time.Time, level Level, content []byte) {
 	// const count = 6 + 1 + 3 + 3 + 2 = 15
 
 	// 获取调用栈信息
-	pc, fileName, lineNo, _ := runtime.Caller(int(b.stackSkip))
-	// 转换文件名
-	fn := convert.StringToBytes(fileName)
-	// 裁剪为基础文件名
-	index := bytes.LastIndexByte(fn, '/')
-	if index > -1 && index+1 < len(fn) {
-		fn = fn[index+1:]
-	}
-	// 整形行号转字节切片
-	ln := make([]byte, 0, 10)
-	ln = strconv.AppendInt(ln, int64(lineNo), 10)
-	// 获取函数名字节切片
-	var mn []byte
-	if rfunc := runtime.FuncForPC(pc); rfunc != nil {
-		mn = convert.StringToBytes(rfunc.Name())
-		// 裁剪为基础函数名
-		index = bytes.LastIndexByte(mn, '/')
-		if index > 0 && index+1 < len(mn) {
-			mn = mn[index+1:]
-		}
-	}
-
+	fn, ln, mn := encoder.GetCallStack(b.stackSkip)
+	// 默认行号占5个字节
+	lnSize := 5
 	// 计算大小
-	size := 15 + len(b.timeFormat) + len(fn) + len(ln) + len(mn) + len(content)
+	size := 15 + len(b.timeFormat) + len(fn) + lnSize + len(mn) + len(c)
+
 	// 从对象池中获取一个日志字节流对象
 	logBytes := logBytesPool.Get()
 	defer func() {
@@ -425,22 +409,18 @@ func (b *belog) formatStack(currTime time.Time, level Level, content []byte) {
 	}
 
 	// 开始追加内容
-	logBytes = currTime.AppendFormat(logBytes, b.timeFormat)
-	logBytes = append(logBytes, ` [`...)
-	logBytes = append(logBytes, level.GetLevelChar())
-	logBytes = append(logBytes, `] [`...)
-	logBytes = append(logBytes, fn...)
-	logBytes = append(logBytes, `:`...)
-	logBytes = append(logBytes, ln...)
-	logBytes = append(logBytes, `] [`...)
-	logBytes = append(logBytes, mn...)
-	logBytes = append(logBytes, `]  `...)
-	logBytes = append(logBytes, content...)
+	logBytes = encoder.AppendTime(logBytes, t, b.timeFormat)
+	logBytes = append(logBytes, ' ')
+	logBytes = encoder.AppendLevel(logBytes, l)
+	logBytes = append(logBytes, ' ')
+	logBytes = encoder.AppendStack(logBytes, false, fn, ln, mn)
+	logBytes = append(logBytes, ' ', ' ')
+	logBytes = append(logBytes, c...)
 	logBytes = append(logBytes, "\r\n"...)
 
 	// 选择合适的适配器执行输出
 	adapterPrint := b.filterAdapterPrint()
-	adapterPrint(currTime, level, logBytes, fn, lineNo, mn)
+	adapterPrint(t, l, logBytes, fn, ln, mn)
 }
 
 // formatStackJSON 序列化带调用栈的JSON格式日志
@@ -452,43 +432,25 @@ func (b *belog) formatStack(currTime time.Time, level Level, content []byte) {
 // 打印格式：
 //
 // {"$(timeKey)": "$(2006/01/02 15:04:05.000)", "$(levelKey)": "D", "$(stackKey)": {"$(fileKey)": "xxxxxxx", "$(lineNoKey)": 1000000, "$(methodKey)": "xxxxxxx"}, $(content)}\r\n
-func (b *belog) formatStackJSON(currTime time.Time, level Level, content []byte) {
+func (b *belog) formatStackJSON(t time.Time, l level.Level, c []byte) {
 	// = 固定长度
 	// + 动态长度
 	//
-	// {"$(timeKey)": "$(2006/01/02 15:04:05.000)", "$(levelKey)": "D", "$(stackKey)": {"$(fileKey)": "xxxxxxx", "$(lineNoKey)": 1000000, "$(methodKey)": "xxxxxxx"}, $(content)}\r\n
+	// {"$(timeKey)": "$(2006/01/02 15:04:05.000)", "$(levelKey)": "D", "$(stackKey)": {"$(fileKey)": "xxxxxxx", "$(lineNoKey)": 1000000, "$(methodKey)": "xxxxxxx"}, $(c)}\r\n
 	// ==++++++++++====++++++++++++++++++++++++++====+++++++++++=========+++++++++++=====++++++++++====+++++++====++++++++++++===+++++++===++++++++++++====+++++++====++++++++++=====
 	// 2   len(tk)   4         len(tf)             4   len(lk)      9      len(sk)    5   len(fk)   4  len(fn)  4   len(lnk)   3 len(ln) 3    len(mk)   4  len(mn)  4   len(c)    3
 	//
 	// const count = 2 + 4 + 4 + 9 + 5 + 4 + 4 + 3 + 3 + 4 + 4 + 3 = 49
 
 	// 获取调用栈信息
-	pc, fileName, lineNo, _ := runtime.Caller(int(b.stackSkip))
-	// 转换文件名
-	fn := convert.StringToBytes(fileName)
-	// 裁剪为基础文件名
-	index := bytes.LastIndexByte(fn, '/')
-	if index > -1 && index+1 < len(fn) {
-		fn = fn[index+1:]
-	}
-	// 整形行号转字节切片
-	ln := make([]byte, 0, 10)
-	ln = strconv.AppendInt(ln, int64(lineNo), 10)
-	// 获取函数名字节切片
-	var mn []byte
-	if rfunc := runtime.FuncForPC(pc); rfunc != nil {
-		mn = convert.StringToBytes(rfunc.Name())
-		// 裁剪为基础函数名
-		index = bytes.LastIndexByte(mn, '/')
-		if index > 0 && index+1 < len(mn) {
-			mn = mn[index+1:]
-		}
-	}
-
+	fn, ln, mn := encoder.GetCallStack(b.stackSkip)
+	// 默认行号占5个字节
+	lnSize := 5
 	// 计算大小
 	size := 49 + len(b.timeJsonKey) + len(b.timeFormat) + len(b.levelJsonKey) +
 		len(b.stackJsonKey) + len(b.stackFileJsonKey) + len(fn) + len(b.stackLineNoJsonKey) +
-		len(ln) + len(b.stackMethodJsonKey) + len(mn) + len(content)
+		lnSize + len(b.stackMethodJsonKey) + len(mn) + len(c)
+
 	// 从对象池中获取一个日志字节流对象
 	logBytes := logBytesPool.Get()
 	defer func() {
@@ -501,33 +463,22 @@ func (b *belog) formatStackJSON(currTime time.Time, level Level, content []byte)
 	}
 
 	// 开始追加内容
-	logBytes = append(logBytes, `{"`...)
-	logBytes = append(logBytes, b.timeJsonKey...)
-	logBytes = append(logBytes, `": "`...)
-	logBytes = currTime.AppendFormat(logBytes, b.timeFormat)
-	logBytes = append(logBytes, `", "`...)
-	logBytes = append(logBytes, b.levelJsonKey...)
-	logBytes = append(logBytes, `": "`...)
-	logBytes = append(logBytes, level.GetLevelChar())
-	logBytes = append(logBytes, `", "`...)
-	logBytes = append(logBytes, b.stackJsonKey...)
-	logBytes = append(logBytes, `": {"`...)
-	logBytes = append(logBytes, b.stackFileJsonKey...)
-	logBytes = append(logBytes, `": "`...)
-	logBytes = append(logBytes, fn...)
-	logBytes = append(logBytes, `", "`...)
-	logBytes = append(logBytes, b.stackLineNoJsonKey...)
-	logBytes = append(logBytes, `": `...)
-	logBytes = append(logBytes, ln...)
-	logBytes = append(logBytes, `, "`...)
-	logBytes = append(logBytes, b.stackMethodJsonKey...)
-	logBytes = append(logBytes, `": "`...)
-	logBytes = append(logBytes, mn...)
-	logBytes = append(logBytes, `"}, `...)
-	logBytes = append(logBytes, content...)
+	logBytes = append(logBytes, `{`...)
+	logBytes = encoder.AppendTimeJSON(logBytes, b.timeJsonKey, t, b.timeFormat)
+	logBytes = append(logBytes, `, `...)
+	logBytes = encoder.AppendLevelJSON(logBytes, b.levelJsonKey, l)
+	logBytes = append(logBytes, `, `...)
+	logBytes = encoder.AppendStackJSON(
+		logBytes, false, b.stackJsonKey,
+		b.stackFileJsonKey, fn,
+		b.stackLineNoJsonKey, ln,
+		b.stackMethodJsonKey, mn,
+	)
+	logBytes = append(logBytes, `, `...)
+	logBytes = append(logBytes, c...)
 	logBytes = append(logBytes, "}\r\n"...)
 
 	// 选择合适的适配器执行输出
 	adapterPrint := b.filterAdapterPrint()
-	adapterPrint(currTime, level, logBytes, fn, lineNo, mn)
+	adapterPrint(t, l, logBytes, fn, ln, mn)
 }
