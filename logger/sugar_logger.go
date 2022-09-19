@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"time"
 
+	field2 "github.com/bearki/belog/v2/field"
 	"github.com/bearki/belog/v2/internal/convert"
-	"github.com/bearki/belog/v2/logger/field"
 )
 
 // SugarBelog 语法糖记录器
@@ -62,10 +62,10 @@ func (s *SugarBelog) check(level Level, message string, val ...interface{}) {
 		}
 
 		// 是否满足(message string, val1 field.Field, val2 field.Field...)
-		var fields []field.Field
+		var fields []field2.Field
 		for _, v := range val {
 			// 是否为Field类型
-			if item, ok := v.(field.Field); ok {
+			if item, ok := v.(field2.Field); ok {
 				fields = append(fields, item)
 			}
 		}
@@ -87,7 +87,7 @@ func (s *SugarBelog) check(level Level, message string, val ...interface{}) {
 					break
 				}
 			} else {
-				fields = append(fields, field.Interface(key, v))
+				fields = append(fields, field2.Interface(key, v))
 			}
 		}
 		if len(fields) == len(val) {

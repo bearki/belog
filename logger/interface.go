@@ -3,7 +3,7 @@ package logger
 import (
 	"time"
 
-	"github.com/bearki/belog/v2/logger/field"
+	"github.com/bearki/belog/v2/field"
 )
 
 // Adapter 适配器接口

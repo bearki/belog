@@ -9,8 +9,8 @@ import (
 
 	"github.com/bearki/belog/v2"
 	"github.com/bearki/belog/v2/adapter/file"
+	field2 "github.com/bearki/belog/v2/field"
 	"github.com/bearki/belog/v2/logger"
-	"github.com/bearki/belog/v2/logger/field"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -26,7 +26,7 @@ func TestXxx(t *testing.T) {
 func BenchmarkXxx(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		zap.Int("index", i)
-		p := field.Int("index", i)
+		p := field2.Int("index", i)
 		p.Put()
 	}
 }
@@ -60,16 +60,16 @@ func BenchmarkNewFileBelog(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		mylog.Trace(
 			"this is a trace log",
-			field.Bool("key0", i%2 == 0),
-			field.Int8("key1", 1),
-			field.Bool("key0", i%2 == 0),
-			field.Int8("key1", 1),
-			field.Bool("key0", i%2 == 0),
-			field.Int8("key1", 1),
-			field.Bool("key0", i%2 == 0),
-			field.Int8("key1", 1),
-			field.Bool("key0", i%2 == 0),
-			field.Int8("key1", 1),
+			field2.Bool("key0", i%2 == 0),
+			field2.Int8("key1", 1),
+			field2.Bool("key0", i%2 == 0),
+			field2.Int8("key1", 1),
+			field2.Bool("key0", i%2 == 0),
+			field2.Int8("key1", 1),
+			field2.Bool("key0", i%2 == 0),
+			field2.Int8("key1", 1),
+			field2.Bool("key0", i%2 == 0),
+			field2.Int8("key1", 1),
 		)
 		// mylog.Trace("this is a trace log")
 	}
