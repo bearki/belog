@@ -97,7 +97,7 @@ func (e *Adapter) Name() string {
 func (e *Adapter) Print(_ time.Time, level level.Level, content []byte) {
 	// 是否禁用颜色
 	if !e.disabledColor {
-		oldBytes := []byte{'[', level.GetLevelChar(), ']'}
+		oldBytes := []byte{'[', level.Byte(), ']'}
 		newBytes := GetLevelConsoleColorBytes(level)
 		newBytes = append(newBytes, oldBytes...)
 		newBytes = append(newBytes, colorResetBytes[:]...)
@@ -140,7 +140,7 @@ func (e *Adapter) Print(_ time.Time, level level.Level, content []byte) {
 func (e *Adapter) PrintStack(_ time.Time, level level.Level, content []byte, _ []byte, _ int, _ []byte) {
 	// 是否禁用颜色
 	if !e.disabledColor {
-		oldBytes := []byte{'[', level.GetLevelChar(), ']'}
+		oldBytes := []byte{'[', level.Byte(), ']'}
 		newBytes := GetLevelConsoleColorBytes(level)
 		newBytes = append(newBytes, oldBytes...)
 		newBytes = append(newBytes, colorResetBytes[:]...)

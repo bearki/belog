@@ -21,9 +21,10 @@ func NewStructPtrPool[T any](maxNum int, initStruct T) *StructPtrPool[T] {
 		siv:  initStruct,
 	}
 	if maxNum > 0 {
-		tmp := new(T)
-		*tmp = initStruct
-		spp.sppc <- tmp
+		for i := 0; i < 10; i++ {
+			tmp := initStruct
+			spp.sppc <- &tmp
+		}
 	}
 	return spp
 }

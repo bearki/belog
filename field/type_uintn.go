@@ -10,121 +10,60 @@
 package field
 
 import (
-	"strconv"
 	"unsafe"
 
 	"github.com/bearki/belog/v2/internal/convert"
 )
 
-// Uint64 格式化uint64类型字段信息
-//
-// 拼接格式  "index": 20
-func Uint64(name string, value uint64) Field {
-	f := Field{
-		KeyBytes:       convert.StringToBytes(name),
-		ValPrefixBytes: normalValPrefix[:],
-		ValBytes:       strconv.AppendUint(eightCapBytesPool.Get(), value, 10),
-		ValSuffixBytes: normalValSuffix[:],
-		valBytesPut:    eightCapBytesPool.Put,
+// uintn 组装~uint类型的字段结构
+func uintn(name string, value int64, vt Type) Field {
+	return Field{
+		Key:     convert.StringToBytes(name),
+		ValType: vt,
+		Integer: value,
 	}
-	return f
 }
 
-// Uint32 格式化uint32类型字段信息
-//
-// 拼接格式  "index": 20
-func Uint32(name string, value uint32) Field {
-	return Uint64(name, uint64(value))
-}
+//------------------------------ 值类型转换 ------------------------------//
 
-// Uint 格式化uint类型字段信息
-//
-// 拼接格式  "index": 20
-func Uint(name string, value uint) Field {
-	return Uint64(name, uint64(value))
-}
-
-// Uint16 格式化uint16类型字段信息
-//
-// 拼接格式  "index": 20
-func Uint16(name string, value uint16) Field {
-	return Uint64(name, uint64(value))
+// Byte 格式化byte类型字段信息
+func Byte(name string, value byte) Field {
+	return uintn(name, int64(value), TypeByte)
 }
 
 // Uint8 格式化uint8类型字段信息
-//
-// 拼接格式  "index": 20
 func Uint8(name string, value uint8) Field {
-	return Uint64(name, uint64(value))
+	return uintn(name, int64(value), TypeUint8)
 }
 
-// Byte 格式化byte类型字段信息
-//
-// 拼接格式  "index": 255
-func Byte(name string, value byte) Field {
-	return Uint64(name, uint64(value))
+// Uint16 格式化uint16类型字段信息
+func Uint16(name string, value uint16) Field {
+	return uintn(name, int64(value), TypeUint16)
+}
+
+// Uint 格式化uint类型字段信息
+func Uint(name string, value uint) Field {
+	return uintn(name, int64(value), TypeUint)
 }
 
 // Uintptr 格式化uintptr类型字段信息
-//
-// 拼接格式  "index": 255
 func Uintptr(name string, value uintptr) Field {
-	return Uint64(name, uint64(value))
+	return uintn(name, int64(value), TypeUintptr)
 }
 
-// Uint64p 格式化*uint64类型字段信息
-//
-// 拼接格式  "index": 20
-func Uint64p(name string, valuep *uint64) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
-	}
-	return Uint64(name, uint64(*valuep))
+// Uint32 格式化uint32类型字段信息
+func Uint32(name string, value uint32) Field {
+	return uintn(name, int64(value), TypeUint32)
 }
 
-// Uint32p 格式化*uint32类型字段信息
-//
-// 拼接格式  "index": 20
-func Uint32p(name string, valuep *uint32) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
-	}
-	return Uint64(name, uint64(*valuep))
+// Uint64 格式化uint64类型字段信息
+func Uint64(name string, value uint64) Field {
+	return uintn(name, int64(value), TypeUint64)
 }
 
-// Uintp 格式化*uint类型字段信息
-//
-// 拼接格式  "index": 20
-func Uintp(name string, valuep *uint) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
-	}
-	return Uint64(name, uint64(*valuep))
-}
-
-// Uint16p 格式化*uint16类型字段信息
-//
-// 拼接格式  "index": 20
-func Uint16p(name string, valuep *uint16) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
-	}
-	return Uint64(name, uint64(*valuep))
-}
-
-// Uint8p 格式化*uint8类型字段信息
-//
-// 拼接格式  "index": 20
-func Uint8p(name string, valuep *uint8) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
-	}
-	return Uint64(name, uint64(*valuep))
-}
+//------------------------------ 指针类型转换 ------------------------------//
 
 // Bytep 格式化*byte类型字段信息
-//
-// 拼接格式  "index": 255
 func Bytep(name string, valuep *byte) Field {
 	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
 		return f
@@ -132,10 +71,48 @@ func Bytep(name string, valuep *byte) Field {
 	return Uint64(name, uint64(*valuep))
 }
 
+// Uint8p 格式化*uint8类型字段信息
+func Uint8p(name string, valuep *uint8) Field {
+	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
+		return f
+	}
+	return Uint64(name, uint64(*valuep))
+}
+
+// Uint16p 格式化*uint16类型字段信息
+func Uint16p(name string, valuep *uint16) Field {
+	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
+		return f
+	}
+	return Uint64(name, uint64(*valuep))
+}
+
+// Uintp 格式化*uint类型字段信息
+func Uintp(name string, valuep *uint) Field {
+	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
+		return f
+	}
+	return Uint64(name, uint64(*valuep))
+}
+
 // Uintptrp 格式化*uintptr类型字段信息
-//
-// 拼接格式  "index": 255
 func Uintptrp(name string, valuep *uintptr) Field {
+	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
+		return f
+	}
+	return Uint64(name, uint64(*valuep))
+}
+
+// Uint32p 格式化*uint32类型字段信息
+func Uint32p(name string, valuep *uint32) Field {
+	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
+		return f
+	}
+	return Uint64(name, uint64(*valuep))
+}
+
+// Uint64p 格式化*uint64类型字段信息
+func Uint64p(name string, valuep *uint64) Field {
 	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
 		return f
 	}

@@ -1,11 +1,38 @@
 package encoder
 
 import (
+	"math"
+	"strconv"
+
 	"github.com/bearki/belog/v2/field"
 	"github.com/bearki/belog/v2/internal/convert"
 )
 
-// AppendField 将字段拼接为行格式
+// appendFieldValue 追加字段值
+func appendFieldValue(dst []byte, val field.Field) []byte {
+	switch true {
+
+	case field.IsValidRange(field.TypeInt, val.ValType, field.TypeInt64):
+		dst = strconv.AppendInt(dst, val.Integer, 10)
+
+	case field.IsValidRange(field.TypeUint, val.ValType, field.TypeUint64):
+		dst = strconv.AppendUint(dst, uint64(val.Integer), 10)
+
+	case val.ValType == field.TypeFloat32:
+		dst = strconv.AppendFloat(dst, float64(math.Float32frombits(uint32(val.Integer))), 'E', -1, 32)
+
+	case val.ValType == field.TypeFloat64:
+		dst = strconv.AppendFloat(dst, math.Float64frombits(uint64(val.Integer)), 'E', -1, 64)
+
+	case field.IsValidRange(field.TypeBool, val.ValType, field.TypeString):
+		dst = append(dst, val.Bytes...)
+
+	}
+
+	return dst
+}
+
+// AppendFieldAndMsg 将字段拼接为行格式
 //
 // @params dst 目标切片
 //
@@ -17,16 +44,14 @@ import (
 //
 // 返回示例，反引号内为实际内容:
 // `k1: v1, k2: v2, ..., message`
-func AppendField(dst []byte, message string, val ...field.Field) []byte {
+func AppendFieldAndMsg(dst []byte, message string, val ...field.Field) []byte {
 	// 遍历所有字段
 	for _, v := range val {
 		// 追加字段并序列化
-		dst = append(dst, v.KeyBytes...)
+		dst = append(dst, v.Key...)
 		dst = append(dst, `: `...)
-		dst = append(dst, v.ValBytes...)
+		dst = appendFieldValue(dst, v)
 		dst = append(dst, `, `...)
-		// 回收到复用池
-		v.Put()
 	}
 
 	// 追加message内容
@@ -36,17 +61,15 @@ func AppendField(dst []byte, message string, val ...field.Field) []byte {
 	return dst
 }
 
-// AppendFieldJSON 将字段拼接为json格式
+// AppendFieldAndMsgJSON 将字段拼接为json格式
 //
 // @params dst 目标切片
 //
-// @params fieldsKey 包裹所有字段的键名
-//
 // @params messageKey 消息的键名
 //
-// @params startEndSym 是否需要开始和结束符号 `{` 和 `}`
-//
 // @params message 消息内容
+//
+// @params fieldsKey 包裹所有字段的键名
 //
 // @params val 字段列表
 //
@@ -54,7 +77,7 @@ func AppendField(dst []byte, message string, val ...field.Field) []byte {
 //
 // 返回示例，反引号内为实际内容:
 // `"fields": {"k1": "v1", ...}, "msg": "message"`
-func AppendFieldJSON(dst []byte, messageKey string, message string, fieldsKey string, val ...field.Field) []byte {
+func AppendFieldAndMsgJSON(dst []byte, messageKey string, message string, fieldsKey string, val ...field.Field) []byte {
 	// 追加字段集字段
 	dst = append(dst, '"')
 	dst = append(dst, fieldsKey...)
@@ -70,20 +93,17 @@ func AppendFieldJSON(dst []byte, messageKey string, message string, fieldsKey st
 
 		// 追加字段并序列化
 		dst = append(dst, '"')
-		dst = append(dst, v.KeyBytes...)
+		dst = append(dst, v.Key...)
 		dst = append(dst, `": `...)
-		dst = append(dst, v.ValPrefixBytes...)
-		dst = append(dst, v.ValBytes...)
-		dst = append(dst, v.ValSuffixBytes...)
+		dst = append(dst, v.Prefix...)
+		dst = appendFieldValue(dst, v)
+		dst = append(dst, v.Suffix...)
 
 		// 已经填充了一个有效字段了
 		if !appendDelimiter {
 			// 下一次需要追加分隔符
 			appendDelimiter = true
 		}
-
-		// 回收到复用池
-		v.Put()
 	}
 	// 追加字段结束括号
 	dst = append(dst, `}, `...)

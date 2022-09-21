@@ -8,6 +8,7 @@
 package logger
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/bearki/belog/v2/encoder"
@@ -20,6 +21,86 @@ type StandardBelog struct {
 	*belog
 }
 
+// format 序列化为行格式
+//
+// 2022/09/14 20:28:13.793 [T]  k1: v1, k2: v2, ..., this is test msg\r\n
+func (s *StandardBelog) format(t time.Time, l level.Level, msg string, val ...field.Field) {
+	// 从对象池中获取一个日志字节流对象
+	logBytes := logBytesPool.Get()
+
+	// 声明空栈信息
+	var (
+		fn []byte
+		ln int
+		mn []byte
+	)
+
+	// 开始追加内容
+	logBytes = encoder.AppendTime(logBytes, t, s.timeFormat)
+	logBytes = append(logBytes, ' ')
+	logBytes = encoder.AppendLevel(logBytes, l, s.levelFormat)
+	if s.printCallStack {
+		fn, ln, mn = encoder.GetCallStack(s.stackSkip)
+		logBytes = append(logBytes, ' ')
+		logBytes = encoder.AppendStack(logBytes, s.callStackFullPath, fn, ln, mn)
+	}
+	logBytes = append(logBytes, ' ', ' ')
+	logBytes = encoder.AppendFieldAndMsg(logBytes, msg, val...)
+	logBytes = append(logBytes, "\r\n"...)
+
+	// 选择合适的适配器执行输出
+	adapterPrint := s.filterAdapterPrint()
+	adapterPrint(t, l, logBytes, fn, ln, mn)
+
+	// 避免使用defer，会有些许性能损耗
+	// 回收切片
+	logBytesPool.Put(logBytes)
+}
+
+// formatJSON 序列化为JSON格式
+//
+// {"$(timeKey)": "$(2006/01/02 15:04:05.000)", "$(levelKey)": "D", "$(fieldsKey)": {$("k1": v1, "k2": "v2", ...)}, "$(msgKey)": "this is test msg"}\r\n
+func (s *StandardBelog) formatJSON(t time.Time, l level.Level, msg string, val ...field.Field) {
+	// 从对象池中获取一个日志字节流对象
+	logBytes := logBytesPool.Get()
+
+	// 声明空栈信息
+	var (
+		fn []byte
+		ln int
+		mn []byte
+	)
+
+	// 开始追加内容
+	logBytes = append(logBytes, '{')
+	logBytes = encoder.AppendTimeJSON(logBytes, s.timeJsonKey, t, s.timeFormat)
+	logBytes = append(logBytes, `, `...)
+	logBytes = encoder.AppendLevelJSON(logBytes, s.levelJsonKey, l, s.levelFormat)
+	logBytes = append(logBytes, `, `...)
+	if s.printCallStack {
+		fn, ln, mn = encoder.GetCallStack(s.stackSkip)
+		logBytes = encoder.AppendStackJSON(
+			logBytes, s.callStackFullPath, s.stackJsonKey,
+			s.stackFileJsonKey, fn,
+			s.stackLineNoJsonKey, ln,
+			s.stackMethodJsonKey, mn,
+		)
+		logBytes = append(logBytes, `, `...)
+	}
+	logBytes = encoder.AppendFieldAndMsgJSON(logBytes, s.messageJsonKey, msg, s.fieldsJsonKey, val...)
+	logBytes = append(logBytes, "}\r\n"...)
+
+	fmt.Println(string(logBytes))
+
+	// 选择合适的适配器执行输出
+	adapterPrint := s.filterAdapterPrint()
+	adapterPrint(t, l, logBytes, fn, ln, mn)
+
+	// 避免使用defer，会有些许性能损耗
+	// 回收切片
+	logBytesPool.Put(logBytes)
+}
+
 // check 高性能日志前置判断和序列化
 func (s *StandardBelog) check(l level.Level, msg string, val ...field.Field) {
 	// 判断当前级别日志是否需要记录
@@ -30,84 +111,15 @@ func (s *StandardBelog) check(l level.Level, msg string, val ...field.Field) {
 
 	// 获取当前时间
 	now := time.Now()
-	// 声明日志容器
-	var logBytes []byte
 
 	// 是否禁用json序列化格式输出
 	if s.disabledJsonFormat {
-		// 结构化为:
-		//
-		// = 固定长度
-		// + 动态长度
-		//
-		// k1: v1, k2: v2, ..., this is test msg
-		// +++++++++++++++++++++++++++++++++++++++++
-		//
-		// 全是动态长度
-
-		// 计算byte大小
-		size := len(msg)
-		for _, v := range val {
-			// key: 10,  => "": => 4个字节
-			// 每个键和值之间有一个冒号和一个空格 => 2个字节
-			// 每个值后面有一个逗号和一个空格 => 2个字节
-			size += 4 + len(v.KeyBytes) + len(v.ValBytes)
-		}
-
-		// 从对象池中获取一个日志字节流对象
-		logBytes = logBytesPool.Get()
-		// 用完后字节切片放回复用池
-		defer func() {
-			logBytesPool.Put(logBytes)
-		}()
-
-		// 判读对象容量是否足够
-		if cap(logBytes) < size {
-			logBytes = make([]byte, 0, size)
-		}
-
-		// 将字段和消息拼接为行格式
-		logBytes = encoder.AppendField(logBytes, msg, val...)
+		// 执行行格式打印
+		s.format(now, l, msg, val...)
 	} else {
-		// 结构化为:
-		//
-		// = 固定长度
-		// + 动态长度
-		//
-		// "$(fields)": {$("k1": v1, "k2": "v2", ...)}, "$(msg)": "this is test msg"
-		// =+++++++++====++++++++++++++++++++++++++++====++++++++++====++++++++++++++++++++=
-		// 1 len(fk)   4      sum(len(field)...)       4   len(mk)   4        len(m)       1
-		//
-		// const count = 1 + 4 + 4 + 4 + 1 = 14
-
-		// 计算Byte大小
-		size := 14 + len(s.fieldsJsonKey) + len(s.messageJsonKey) + len(msg)
-		for _, v := range val {
-			// "key": 10 => "": => 4个字节
-			// 每个键有两个双引号包裹 => 2个字节
-			// 每个键和值之间有一个冒号和一个空格 => 2个字节
-			size += 4 + len(v.KeyBytes) + len(v.ValPrefixBytes) + len(v.ValBytes) + len(v.ValSuffixBytes)
-		}
-
-		// 从对象池中获取一个日志字节流对象
-		logBytes = logBytesPool.Get()
-		// 用完后字节切片放回复用池
-		defer func() {
-			logBytesPool.Put(logBytes)
-		}()
-
-		// 判读对象容量是否足够
-		if cap(logBytes) < size {
-			logBytes = make([]byte, 0, size)
-		}
-
-		// 将字段和消息拼接为json格式
-		logBytes = encoder.AppendFieldJSON(logBytes, s.messageJsonKey, msg, s.fieldsJsonKey, val...)
+		// 执行JSON格式打印
+		s.formatJSON(now, l, msg, val...)
 	}
-
-	// 筛选合适的序列化方法执行序列化打印输出
-	format := s.filterFormat()
-	format(now, l, logBytes)
 }
 
 // Trace 通知级别的日志（高性能序列化）

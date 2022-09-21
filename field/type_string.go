@@ -14,23 +14,23 @@ import (
 	"github.com/bearki/belog/v2/internal/convert"
 )
 
-// Bool 格式化string类型字段信息
-//
-// 拼接格式  "name": "value"
+//------------------------------ 值类型转换 ------------------------------//
+
+// String 格式化string类型字段信息
 func String(name string, value string) Field {
 	f := Field{
-		KeyBytes:       convert.StringToBytes(name),
-		ValPrefixBytes: stringValPrefix[:],
-		ValBytes:       convert.StringToBytes(value),
-		ValSuffixBytes: stringValSuffix[:],
-		valBytesPut:    nil,
+		Key:     convert.StringToBytes(name),
+		ValType: TypeString,
+		Bytes:   convert.StringToBytes(value),
+		Prefix:  stringValPrefix[:],
+		Suffix:  stringValSuffix[:],
 	}
 	return f
 }
 
+//------------------------------ 指针类型转换 ------------------------------//
+
 // Boolp 格式化*string类型字段信息
-//
-// 拼接格式  "name": "valuep"
 func Stringp(name string, valuep *string) Field {
 	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
 		return f

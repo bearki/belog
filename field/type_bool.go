@@ -27,25 +27,20 @@ func boolBytes(value bool) []byte {
 	return falseConstArray[:]
 }
 
+//------------------------------ 值类型转换 ------------------------------//
+
 // Bool 格式化bool类型字段信息
-//
-// 拼接格式  "name": true
 func Bool(name string, value bool) Field {
-	f := Field{
-		KeyBytes:       convert.StringToBytes(name),
-		ValPrefixBytes: normalValPrefix[:],
-		ValBytes:       boolBytes(value),
-		ValSuffixBytes: normalValSuffix[:],
-		valBytesPut:    nil,
+	return Field{
+		Key:     convert.StringToBytes(name),
+		ValType: TypeBool,
+		Bytes:   boolBytes(value),
 	}
-	return f
 }
 
+//------------------------------ 指针类型转换 ------------------------------//
+
 // Boolp 格式化*bool类型字段信息
-//
-// 注意: 空指针将输出null
-//
-// 拼接格式  "name": true
 func Boolp(name string, valuep *bool) Field {
 	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
 		return f

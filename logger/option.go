@@ -7,6 +7,11 @@ type Option struct {
 	// Default: false
 	PrintCallStack bool
 
+	// 是否输出调用栈完整路径
+	//
+	// Default: false
+	CallStackFullPath bool
+
 	// 是否禁用JSON序列化输出
 	//
 	// Default: false
@@ -16,8 +21,21 @@ type Option struct {
 	//
 	// 支持time.Format的所有格式
 	//
+	// Unix 秒级时间戳,
+	// UnixMilli 毫秒级时间戳,
+	// UnixMicro 微秒级时间戳,
+	// UnixNano 纳秒级时间戳
+	//
 	// Default: 2006/01/02 15:04:05.000
 	TimeFormat string
+
+	// 日志级别输出格式
+	//
+	// true: 使用日志级别完整字符串
+	// false: 使用日志级别首字符
+	//
+	// Default: false
+	LevelFormat bool
 
 	// 时间的JSON键名
 	//

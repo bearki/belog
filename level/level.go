@@ -3,9 +3,6 @@ package level
 // Level 日志级别类型
 type Level uint8
 
-// Char 日志级别字符类型
-type Char = byte
-
 // 日志保存级别定义
 const (
 	Trace Level = 1 // 通知级别
@@ -16,8 +13,8 @@ const (
 	Fatal Level = 6 // 致命级别
 )
 
-// levelMap 日志级别字符映射
-var levelMap = map[Level]Char{
+// levelByteMap 日志级别字符映射
+var levelByteMap = map[Level]byte{
 	Trace: 'T',
 	Debug: 'D',
 	Info:  'I',
@@ -26,10 +23,28 @@ var levelMap = map[Level]Char{
 	Fatal: 'F',
 }
 
-// GetLevelChar 获取日志级别对应的字符
-func (l Level) GetLevelChar() Char {
-	if c, ok := levelMap[l]; ok {
+// levelStringMap 日志级别字符串映射
+var levelStringMap = map[Level]string{
+	Trace: "trace",
+	Debug: "debug",
+	Info:  "info",
+	Warn:  "warning",
+	Error: "error",
+	Fatal: "fatal",
+}
+
+// Byte 获取日志级别对应的字符
+func (l Level) Byte() byte {
+	if c, ok := levelByteMap[l]; ok {
 		return c
 	}
 	return ' '
+}
+
+// Byte 获取日志级别对应的字符串
+func (l Level) String() string {
+	if s, ok := levelStringMap[l]; ok {
+		return s
+	}
+	return " "
 }

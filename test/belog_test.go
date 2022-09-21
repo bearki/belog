@@ -3,12 +3,42 @@ package test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/bearki/belog/v2"
 	"github.com/bearki/belog/v2/adapter/file"
-	field2 "github.com/bearki/belog/v2/field"
+	"github.com/bearki/belog/v2/encoder"
+	"github.com/bearki/belog/v2/field"
 	"github.com/bearki/belog/v2/logger"
 )
+
+func TestBelogLoggerFormat(t *testing.T) {
+	// 初始化一个实例(无适配器)
+	l, err := belog.New(logger.Option{})
+	if err != nil {
+		fmt.Printf("belog logger create failed, %s\r\n", err)
+		return
+	}
+
+	// l.PrintCallStack()
+	for i := 0; i < 10; i++ {
+		tt := time.Now()
+		l.Trace(
+			"this is a trace log",
+			field.Bool("key0", i%2 == 0),
+			field.Int("key1", i),
+			field.Bool("key0", i%2 == 0),
+			field.Int("key1", i),
+			field.Bool("key0", i%2 == 0),
+			field.Int("key1", i),
+			field.Bool("key0", i%2 == 0),
+			field.Int("key1", i),
+			field.Bool("key0", i%2 == 0),
+			field.Int("key1", i),
+		)
+		fmt.Println("TT", time.Since(tt).Nanoseconds())
+	}
+}
 
 // BenchmarkBelogLoggerFileWrite 测试belog标准记录器文件写入
 func BenchmarkBelogLoggerFileWrite(b *testing.B) {
@@ -37,16 +67,16 @@ func BenchmarkBelogLoggerFileWrite(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		l.Trace(
 			"this is a trace log",
-			field2.Bool("key0", i%2 == 0),
-			field2.Int8("key1", 1),
-			field2.Bool("key0", i%2 == 0),
-			field2.Int8("key1", 1),
-			field2.Bool("key0", i%2 == 0),
-			field2.Int8("key1", 1),
-			field2.Bool("key0", i%2 == 0),
-			field2.Int8("key1", 1),
-			field2.Bool("key0", i%2 == 0),
-			field2.Int8("key1", 1),
+			field.Bool("key0", i%2 == 0),
+			field.Int8("key1", 1),
+			field.Bool("key0", i%2 == 0),
+			field.Int8("key1", 1),
+			field.Bool("key0", i%2 == 0),
+			field.Int8("key1", 1),
+			field.Bool("key0", i%2 == 0),
+			field.Int8("key1", 1),
+			field.Bool("key0", i%2 == 0),
+			field.Int8("key1", 1),
 		)
 	}
 }
@@ -54,28 +84,32 @@ func BenchmarkBelogLoggerFileWrite(b *testing.B) {
 // BenchmarkBelogLoggerFormat 测试belog标准记录器序列化
 func BenchmarkBelogLoggerFormat(b *testing.B) {
 	// 初始化一个实例(无适配器)
-	l, err := belog.New(logger.Option{})
+	l, err := belog.New(logger.Option{
+		CallStackFullPath: true,
+		TimeFormat:        encoder.TimeFormat10,
+		StackJsonKey:      "myStack",
+		LevelFormat:       true,
+	})
 	if err != nil {
 		fmt.Printf("belog logger create failed, %s\r\n", err)
 		return
 	}
 	b.ReportAllocs()
-
-	// l.PrintCallStack()
+	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
-		l.Trace(
+		l.Warn(
 			"this is a trace log",
-			// field2.Bool("key0", i%2 == 0),
-			// field2.Int8("key1", 1),
-			// field2.Bool("key0", i%2 == 0),
-			// field2.Int8("key1", 1),
-			// field2.Bool("key0", i%2 == 0),
-			// field2.Int8("key1", 1),
-			// field2.Bool("key0", i%2 == 0),
-			// field2.Int8("key1", 1),
-			// field2.Bool("key0", i%2 == 0),
-			// field2.Int8("key1", 1),
+			field.Bool("key0", i%2 == 0),
+			field.Int("key1", i),
+			field.Bool("key2", i%2 == 0),
+			field.Int("key3", i),
+			field.Bool("key4", i%2 == 0),
+			field.Int("key5", i),
+			field.Bool("key6", i%2 == 0),
+			field.Int("key7", i),
+			field.Bool("key8", i%2 == 0),
+			field.Int("key8", i),
 		)
 	}
 }

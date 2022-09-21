@@ -31,14 +31,11 @@ func CheckPtr(name string, value unsafe.Pointer) (Field, bool) {
 	// 检查指针是否为空
 	if value == nil {
 		// 指针为空，检查不通过
-		f := Field{
-			KeyBytes:       convert.StringToBytes(name),
-			ValPrefixBytes: normalValPrefix[:],
-			ValBytes:       nullConstArray[:],
-			ValSuffixBytes: normalValSuffix[:],
-			valBytesPut:    nil,
-		}
-		return f, false
+		return Field{
+			Key:     convert.StringToBytes(name),
+			ValType: TypeNull,
+			Bytes:   nullConstArray[:],
+		}, false
 	}
 	// 指针不为空，检查通过
 	return Field{}, true
