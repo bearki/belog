@@ -11,8 +11,6 @@ package field
 
 import (
 	"unsafe"
-
-	"github.com/bearki/belog/v2/internal/convert"
 )
 
 //------------------------------ 值类型转换 ------------------------------//
@@ -20,7 +18,7 @@ import (
 // Complex64 格式化complex64类型字段信息
 func Complex64(name string, value complex64) Field {
 	return Field{
-		Key:       convert.StringToBytes(name),
+		Key:       name,
 		ValType:   TypeComplex64,
 		Interface: value,
 	}
@@ -29,7 +27,7 @@ func Complex64(name string, value complex64) Field {
 // Complex128 格式化complex128类型字段信息
 func Complex128(name string, value complex128) Field {
 	return Field{
-		Key:       convert.StringToBytes(name),
+		Key:       name,
 		ValType:   TypeComplex128,
 		Interface: value,
 	}

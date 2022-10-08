@@ -12,20 +12,31 @@ import (
 func appendFieldValue(dst []byte, val field.Field) []byte {
 	switch true {
 
-	case field.IsValidRange(field.TypeInt, val.ValType, field.TypeInt64):
+	// int8 <= type <= int64
+	case field.IsValidRange(field.TypeInt8, val.ValType, field.TypeInt64):
 		dst = strconv.AppendInt(dst, val.Integer, 10)
 
-	case field.IsValidRange(field.TypeUint, val.ValType, field.TypeUint64):
+	// uint8 <= type <= uint64
+	case field.IsValidRange(field.TypeUint8, val.ValType, field.TypeUint64):
 		dst = strconv.AppendUint(dst, uint64(val.Integer), 10)
 
+	// type == float32
 	case val.ValType == field.TypeFloat32:
 		dst = strconv.AppendFloat(dst, float64(math.Float32frombits(uint32(val.Integer))), 'E', -1, 32)
 
+	// type == float64
 	case val.ValType == field.TypeFloat64:
 		dst = strconv.AppendFloat(dst, math.Float64frombits(uint64(val.Integer)), 'E', -1, 64)
 
+	// type == nil
+	case val.ValType == field.TypeNull:
+		dst = append(dst, val.String...)
+
+	// bool <= type <= string
 	case field.IsValidRange(field.TypeBool, val.ValType, field.TypeString):
-		dst = append(dst, val.Bytes...)
+		dst = append(dst, '"')
+		dst = append(dst, val.String...)
+		dst = append(dst, '"')
 
 	}
 
@@ -95,9 +106,7 @@ func AppendFieldAndMsgJSON(dst []byte, messageKey string, message string, fields
 		dst = append(dst, '"')
 		dst = append(dst, v.Key...)
 		dst = append(dst, `": `...)
-		dst = append(dst, v.Prefix...)
 		dst = appendFieldValue(dst, v)
-		dst = append(dst, v.Suffix...)
 
 		// 已经填充了一个有效字段了
 		if !appendDelimiter {

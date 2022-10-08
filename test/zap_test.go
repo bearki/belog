@@ -20,7 +20,10 @@ func BenchmarkZapLoggerFormat(b *testing.B) {
 		zapcore.InfoLevel,
 	)
 	l := zap.New(core)
+
+	b.ReportAllocs()
 	b.StartTimer()
+
 	for i := 0; i < b.N; i++ {
 		l.Info(
 			"this is a trace log",

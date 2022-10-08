@@ -31,8 +31,9 @@ const (
 	TypeComplex64
 	TypeComplex128
 
-	TypeBool
 	TypeNull
+
+	TypeBool
 	TypeString
 )
 
@@ -43,11 +44,9 @@ func IsValidRange(minType, valType, maxType Type) bool {
 
 // Field 键值对序列化结构体
 type Field struct {
-	Key       []byte      // 键的字节流
+	Key       string      // 键的字节流
 	ValType   Type        // 值类型
 	Integer   int64       // 可转为整型的值
-	Bytes     []byte      // 可转为字节流的值
+	String    string      // 可转为字节流的值
 	Interface interface{} // 无法转换的值
-	Prefix    []byte      // 值的前缀字节流，如: "、{、[
-	Suffix    []byte      // 值的后缀字节流，如: "、}、]
 }

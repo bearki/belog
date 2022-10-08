@@ -8,7 +8,6 @@
 package logger
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/bearki/belog/v2/encoder"
@@ -89,8 +88,6 @@ func (s *StandardBelog) formatJSON(t time.Time, l level.Level, msg string, val .
 	}
 	logBytes = encoder.AppendFieldAndMsgJSON(logBytes, s.messageJsonKey, msg, s.fieldsJsonKey, val...)
 	logBytes = append(logBytes, "}\r\n"...)
-
-	fmt.Println(string(logBytes))
 
 	// 选择合适的适配器执行输出
 	adapterPrint := s.filterAdapterPrint()

@@ -12,8 +12,6 @@ package field
 import (
 	"math"
 	"unsafe"
-
-	"github.com/bearki/belog/v2/internal/convert"
 )
 
 //------------------------------ 值类型转换 ------------------------------//
@@ -21,7 +19,7 @@ import (
 // Float32 格式化float32类型字段信息
 func Float32(name string, value float32) Field {
 	return Field{
-		Key:     convert.StringToBytes(name),
+		Key:     name,
 		ValType: TypeFloat32,
 		Integer: int64(math.Float32bits(value)),
 	}
@@ -30,7 +28,7 @@ func Float32(name string, value float32) Field {
 // Float64 格式化float64类型字段信息
 func Float64(name string, value float64) Field {
 	return Field{
-		Key:     convert.StringToBytes(name),
+		Key:     name,
 		ValType: TypeFloat64,
 		Integer: int64(math.Float64bits(value)),
 	}

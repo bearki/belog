@@ -7,7 +7,6 @@ import (
 
 	"github.com/bearki/belog/v2"
 	"github.com/bearki/belog/v2/adapter/file"
-	"github.com/bearki/belog/v2/encoder"
 	"github.com/bearki/belog/v2/field"
 	"github.com/bearki/belog/v2/logger"
 )
@@ -84,16 +83,12 @@ func BenchmarkBelogLoggerFileWrite(b *testing.B) {
 // BenchmarkBelogLoggerFormat 测试belog标准记录器序列化
 func BenchmarkBelogLoggerFormat(b *testing.B) {
 	// 初始化一个实例(无适配器)
-	l, err := belog.New(logger.Option{
-		CallStackFullPath: true,
-		TimeFormat:        encoder.TimeFormat10,
-		StackJsonKey:      "myStack",
-		LevelFormat:       true,
-	})
+	l, err := belog.New(logger.Option{})
 	if err != nil {
 		fmt.Printf("belog logger create failed, %s\r\n", err)
 		return
 	}
+
 	b.ReportAllocs()
 	b.StartTimer()
 

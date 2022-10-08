@@ -18,39 +18,40 @@ import (
 )
 
 var (
-	// 需要跳过的最少调用栈层数
-	//
-	// 该值由belog内部自定义，外部无需关心
-	stackBaseSkip uint = 3
-
 	// 日志字节流对象池
 	logBytesPool = pool.NewBytesPool(100, 0, 1024)
 )
 
 // belog 标准记录器
 type belog struct {
-	// 需要跳过的调用栈层数
-	stackSkip uint
-
+	//
 	// 缓存映射配置
+	//
 
 	levelMapRWMutex sync.RWMutex             // 日志级别配置读写锁
 	levelMap        map[level.Level]struct{} // 需要记录的日志级别字符映射
 	adaptersRWMutex sync.RWMutex             // 适配器配置读写锁
 	adapters        map[string]Adapter       // 适配器缓存映射
 
+	//
 	// 功能配置
+	//
 
+	stackSkip          uint // 需要跳过的调用栈层数
 	printCallStack     bool // 是否打印调用栈
 	callStackFullPath  bool // 是否输出调用栈完整路径
 	disabledJsonFormat bool // 是否禁用JSON序列化输出
 
+	//
 	// 序列化格式配置
+	//
 
 	timeFormat  string // 时间序列化格式
 	levelFormat bool   // 日志级别输出格式
 
+	//
 	// JSON字段配置
+	//
 
 	timeJsonKey        string // 时间的JSON键名
 	levelJsonKey       string // 日志级别的JSON键名
@@ -220,7 +221,7 @@ func (b *belog) filterAdapterPrint() adapterPrintFunc {
 	return b.multipleAdapterPrint
 }
 
-// singleAdapterPrint 单适配器含调用栈输出
+// singleAdapterPrint 单适配器输出
 func (b *belog) singleAdapterPrint(t time.Time, l level.Level, c []byte, fn []byte, ln int, mn []byte) {
 	// 加个读锁
 	b.adaptersRWMutex.RLock()
@@ -242,7 +243,7 @@ func (b *belog) singleAdapterPrint(t time.Time, l level.Level, c []byte, fn []by
 	b.adaptersRWMutex.RUnlock()
 }
 
-// multipleAdapterPrint 多适配器含调用栈输出
+// multipleAdapterPrint 多适配器输出
 func (b *belog) multipleAdapterPrint(t time.Time, l level.Level, c []byte, fn []byte, ln int, mn []byte) {
 	// 加个读锁
 	b.adaptersRWMutex.RLock()

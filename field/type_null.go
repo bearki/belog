@@ -9,12 +9,7 @@ package field
 
 import (
 	"unsafe"
-
-	"github.com/bearki/belog/v2/internal/convert"
 )
-
-// null常量数组，用于切片的底层引用
-var nullConstArray = [4]byte{'n', 'u', 'l', 'l'}
 
 // CheckPtr 检查任意字段的值指针
 //
@@ -32,9 +27,9 @@ func CheckPtr(name string, value unsafe.Pointer) (Field, bool) {
 	if value == nil {
 		// 指针为空，检查不通过
 		return Field{
-			Key:     convert.StringToBytes(name),
+			Key:     name,
 			ValType: TypeNull,
-			Bytes:   nullConstArray[:],
+			String:  "null",
 		}, false
 	}
 	// 指针不为空，检查通过

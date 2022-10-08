@@ -11,14 +11,12 @@ package field
 
 import (
 	"unsafe"
-
-	"github.com/bearki/belog/v2/internal/convert"
 )
 
 // uintn 组装~uint类型的字段结构
 func uintn(name string, value int64, vt Type) Field {
 	return Field{
-		Key:     convert.StringToBytes(name),
+		Key:     name,
 		ValType: vt,
 		Integer: value,
 	}

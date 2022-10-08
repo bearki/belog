@@ -1,5 +1,12 @@
 package logger
 
+const (
+	// 需要跳过的最少调用栈层数
+	//
+	// 该值由belog内部自定义，外部无需关心
+	stackBaseSkip uint = 3
+)
+
 // Option 日志记录器初始化参数
 type Option struct {
 	// 是否记录调用栈

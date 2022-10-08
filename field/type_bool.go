@@ -10,21 +10,13 @@ package field
 
 import (
 	"unsafe"
-
-	"github.com/bearki/belog/v2/internal/convert"
 )
 
-// 布尔类型常量数组，用于切片的底层引用
-var (
-	trueConstArray  = [4]byte{'t', 'r', 'u', 'e'}
-	falseConstArray = [5]byte{'f', 'a', 'l', 's', 'e'}
-)
-
-func boolBytes(value bool) []byte {
+func boolToString(value bool) string {
 	if value {
-		return trueConstArray[:]
+		return "true"
 	}
-	return falseConstArray[:]
+	return "false"
 }
 
 //------------------------------ 值类型转换 ------------------------------//
@@ -32,9 +24,9 @@ func boolBytes(value bool) []byte {
 // Bool 格式化bool类型字段信息
 func Bool(name string, value bool) Field {
 	return Field{
-		Key:     convert.StringToBytes(name),
+		Key:     name,
 		ValType: TypeBool,
-		Bytes:   boolBytes(value),
+		String:  boolToString(value),
 	}
 }
 

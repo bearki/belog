@@ -10,8 +10,6 @@ package field
 
 import (
 	"unsafe"
-
-	"github.com/bearki/belog/v2/internal/convert"
 )
 
 //------------------------------ 值类型转换 ------------------------------//
@@ -19,11 +17,9 @@ import (
 // String 格式化string类型字段信息
 func String(name string, value string) Field {
 	f := Field{
-		Key:     convert.StringToBytes(name),
+		Key:     name,
 		ValType: TypeString,
-		Bytes:   convert.StringToBytes(value),
-		Prefix:  stringValPrefix[:],
-		Suffix:  stringValSuffix[:],
+		String:  value,
 	}
 	return f
 }
