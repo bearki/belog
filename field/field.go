@@ -11,11 +11,20 @@ type Type uint8
 
 // 类型枚举
 const (
+
+	//
+	// 有符号整型
+	//
+
 	TypeInt8 Type = iota
 	TypeInt16
 	TypeInt
 	TypeInt32
 	TypeInt64
+
+	//
+	// 无符号整型
+	//
 
 	TypeUint8
 	TypeByte
@@ -25,16 +34,31 @@ const (
 	TypeUint32
 	TypeUint64
 
+	//
+	// 浮点型
+	//
+
 	TypeFloat32
 	TypeFloat64
+
+	//
+	// 复数型
+	//
 
 	TypeComplex64
 	TypeComplex128
 
+	// 空指针型
 	TypeNull
 
+	// 布尔型
 	TypeBool
+
+	// 字符串型
 	TypeString
+
+	// 时间类型
+	TypeTime
 )
 
 // IsValidRange 是否在有效范围内

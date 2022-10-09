@@ -21,19 +21,13 @@ const (
 	TimeFormatUnixNano  = "UnixNano"  // 纳秒级时间戳
 )
 
-// AppendTime 追加行格式的时间
-//
-// @params dst 目标切片
-//
-// @params t 实际时间
-//
-// @params format 序列化格式（与time.Format保持一致）
-//
-// @return 序列化后的行格式时间字符串
-//
-// 返回示例，反引号内为实际内容:
-// `2006/01/02 15:04:05.000`
-func AppendTime(dst []byte, t time.Time, format string) []byte {
+// 追加时间值
+func appendTime(isJson bool, dst []byte, t time.Time, format string) []byte {
+	// 赋值默认格式
+	if len(format) == 0 {
+		format = TimeFormat1
+	}
+
 	// 是否使用时间戳
 	switch format {
 
@@ -50,9 +44,35 @@ func AppendTime(dst []byte, t time.Time, format string) []byte {
 		return strconv.AppendInt(dst, t.UnixNano(), 10)
 
 	default:
-		return t.AppendFormat(dst, format)
+		// 格式化为字符串时判断是否需要追加双引号
+		if isJson {
+			dst = append(dst, '"')
+			dst = t.AppendFormat(dst, format)
+			dst = append(dst, '"')
+			return dst
+		}
 
+		return t.AppendFormat(dst, format)
 	}
+}
+
+// AppendTime 追加行格式的时间
+//
+// @params dst 目标切片
+//
+// @params key 时间的键名
+//
+// @params t 实际时间
+//
+// @params format 序列化格式（与time.Format保持一致）
+//
+// @return 序列化后的行格式时间字符串
+//
+// 返回示例，反引号内为实际内容:
+// `2006/01/02 15:04:05.000`
+func AppendTime(dst []byte, t time.Time, format string) []byte {
+	// 追加时间值
+	return appendTime(false, dst, t, format)
 }
 
 // AppendTimeJSON 追加JSON格式的时间
@@ -68,32 +88,13 @@ func AppendTime(dst []byte, t time.Time, format string) []byte {
 // @return 序列化后的JSON格式时间字符串
 //
 // 返回示例，反引号内为实际内容:
-// `"time": "2006/01/02 15:04:05.000"`
+// `"time": "2006/01/02 15:04:05.000"` || `"time": 123456789000`
 func AppendTimeJSON(dst []byte, key string, t time.Time, format string) []byte {
+	// 拼接键名
 	dst = append(dst, '"')
 	dst = append(dst, key...)
 	dst = append(dst, `": `...)
 
-	// 是否使用时间戳
-	switch format {
-
-	case TimeFormatUnix:
-		return strconv.AppendInt(dst, t.Unix(), 10)
-
-	case TimeFormatUnixMilli:
-		return strconv.AppendInt(dst, t.UnixMilli(), 10)
-
-	case TimeFormatUnixMicro:
-		return strconv.AppendInt(dst, t.UnixMicro(), 10)
-
-	case TimeFormatUnixNano:
-		return strconv.AppendInt(dst, t.UnixNano(), 10)
-
-	default:
-		dst = append(dst, '"')
-		dst = t.AppendFormat(dst, format)
-		dst = append(dst, '"')
-		return dst
-
-	}
+	// 追加时间值
+	return appendTime(true, dst, t, format)
 }

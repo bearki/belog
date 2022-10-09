@@ -3,13 +3,27 @@ package encoder
 import (
 	"math"
 	"strconv"
+	"time"
 
 	"github.com/bearki/belog/v2/field"
 	"github.com/bearki/belog/v2/internal/convert"
 )
 
 // appendFieldValue 追加字段值
-func appendFieldValue(dst []byte, val field.Field) []byte {
+func appendFieldValue(isJson bool, dst []byte, val field.Field) []byte {
+	// 是否为JSON格式
+	if isJson {
+		// 追加键名
+		dst = append(dst, '"')
+		dst = append(dst, val.Key...)
+		dst = append(dst, `": `...)
+	} else {
+		// 追加键名
+		dst = append(dst, val.Key...)
+		dst = append(dst, `: `...)
+	}
+
+	// 根据类型追加值
 	switch true {
 
 	// int8 <= type <= int64
@@ -44,12 +58,21 @@ func appendFieldValue(dst []byte, val field.Field) []byte {
 	case val.ValType == field.TypeBool:
 		dst = strconv.AppendBool(dst, convert.IntToBool(int(val.Integer)))
 
-	// bool <= type <= string
+	// type == string
 	case val.ValType == field.TypeString:
-		dst = append(dst, '"')
-		dst = append(dst, val.String...)
-		dst = append(dst, '"')
+		// 是否为JSON格式
+		if isJson {
+			dst = append(dst, '"')
+			dst = append(dst, val.String...)
+			dst = append(dst, '"')
+		} else {
+			dst = append(dst, val.String...)
+		}
 
+	// type == time
+	case val.ValType == field.TypeTime:
+		// 微秒时间戳
+		dst = appendTime(isJson, dst, time.UnixMicro(val.Integer), val.String)
 	}
 
 	// 组装完成
@@ -72,9 +95,8 @@ func AppendFieldAndMsg(dst []byte, message string, val ...field.Field) []byte {
 	// 遍历所有字段
 	for _, v := range val {
 		// 追加字段并序列化
-		dst = append(dst, v.Key...)
-		dst = append(dst, `: `...)
-		dst = appendFieldValue(dst, v)
+		dst = appendFieldValue(false, dst, v)
+		// 追加分隔符
 		dst = append(dst, `, `...)
 	}
 
@@ -106,26 +128,14 @@ func AppendFieldAndMsgJSON(dst []byte, messageKey string, message string, fields
 	dst = append(dst, '"')
 	dst = append(dst, fieldsKey...)
 	dst = append(dst, `": {`...)
-	// 是否需要追加分隔符了
-	appendDelimiter := false
 	// 遍历所有字段
-	for _, v := range val {
+	for i, v := range val {
 		// 从第二个有效字段开始追加分隔符号
-		if appendDelimiter {
+		if i > 0 {
 			dst = append(dst, `, `...)
 		}
-
 		// 追加字段并序列化
-		dst = append(dst, '"')
-		dst = append(dst, v.Key...)
-		dst = append(dst, `": `...)
-		dst = appendFieldValue(dst, v)
-
-		// 已经填充了一个有效字段了
-		if !appendDelimiter {
-			// 下一次需要追加分隔符
-			appendDelimiter = true
-		}
+		dst = appendFieldValue(true, dst, v)
 	}
 	// 追加字段结束括号
 	dst = append(dst, `}, `...)
