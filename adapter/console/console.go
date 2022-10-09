@@ -35,8 +35,8 @@ var (
 	colorResetBytes = [...]byte{27, 91, 48, 109}
 )
 
-// GetLevelConsoleColorBytes 获取日志级别对应的控制台颜色字节表
-func GetLevelConsoleColorBytes(l level.Level) []byte {
+// getLevelConsoleColorBytes 获取日志级别对应的控制台颜色字节表
+func getLevelConsoleColorBytes(l level.Level) []byte {
 	switch l {
 	case level.Trace: // 通知级别(灰色)
 		return colorGrayStartBytes[:]
@@ -98,7 +98,13 @@ func (e *Adapter) Print(_ time.Time, level level.Level, content []byte) {
 	// 是否禁用颜色
 	if !e.disabledColor {
 		oldBytes := []byte{'[', level.Byte(), ']'}
-		newBytes := GetLevelConsoleColorBytes(level)
+		if !bytes.Contains(content, oldBytes) {
+			oldBytes = make([]byte, 0, len(level.String())+2)
+			oldBytes = append(oldBytes, '[')
+			oldBytes = append(oldBytes, level.String()...)
+			oldBytes = append(oldBytes, ']')
+		}
+		newBytes := getLevelConsoleColorBytes(level)
 		newBytes = append(newBytes, oldBytes...)
 		newBytes = append(newBytes, colorResetBytes[:]...)
 		// 替换颜色
@@ -141,7 +147,13 @@ func (e *Adapter) PrintStack(_ time.Time, level level.Level, content []byte, _ s
 	// 是否禁用颜色
 	if !e.disabledColor {
 		oldBytes := []byte{'[', level.Byte(), ']'}
-		newBytes := GetLevelConsoleColorBytes(level)
+		if !bytes.Contains(content, oldBytes) {
+			oldBytes = make([]byte, 0, len(level.String())+2)
+			oldBytes = append(oldBytes, '[')
+			oldBytes = append(oldBytes, level.String()...)
+			oldBytes = append(oldBytes, ']')
+		}
+		newBytes := getLevelConsoleColorBytes(level)
 		newBytes = append(newBytes, oldBytes...)
 		newBytes = append(newBytes, colorResetBytes[:]...)
 		// 替换颜色

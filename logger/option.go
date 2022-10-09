@@ -1,5 +1,7 @@
 package logger
 
+import "github.com/bearki/belog/v2/encoder"
+
 const (
 	// 需要跳过的最少调用栈层数
 	//
@@ -87,7 +89,7 @@ type Option struct {
 
 // 默认的参数配置
 var defaultOption = Option{
-	TimeFormat:         "2006/01/02 15:04:05.000",
+	TimeFormat:         encoder.TimeFormatUnixMicro,
 	TimeJsonKey:        "time",
 	LevelJsonKey:       "level",
 	StackJsonKey:       "stack",
@@ -97,6 +99,9 @@ var defaultOption = Option{
 	FieldsJsonKey:      "fields",
 	MessageJsonKey:     "message",
 }
+
+// DefaultOption 默认配置
+var DefaultOption = defaultOption
 
 // getValidOption 获取有效参数
 func getValidOption(option Option) Option {

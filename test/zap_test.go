@@ -13,7 +13,6 @@ func BenchmarkZapLoggerFormat(b *testing.B) {
 	b.ReportAllocs()
 	b.StopTimer()
 	cfg := zap.NewProductionConfig()
-	cfg.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.000")
 	core := zapcore.NewCore(
 		zapcore.NewJSONEncoder(cfg.EncoderConfig),
 		zapcore.AddSync(io.Discard),

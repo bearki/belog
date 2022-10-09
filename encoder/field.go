@@ -58,8 +58,8 @@ func appendFieldValue(isJson bool, dst []byte, val field.Field) []byte {
 	case val.ValType == field.TypeBool:
 		dst = strconv.AppendBool(dst, convert.IntToBool(int(val.Integer)))
 
-	// type == string
-	case val.ValType == field.TypeString:
+	// string <= type == error
+	case field.IsValidRange(field.TypeString, val.ValType, field.TypeError):
 		// 是否为JSON格式
 		if isJson {
 			dst = append(dst, '"')
@@ -73,6 +73,7 @@ func appendFieldValue(isJson bool, dst []byte, val field.Field) []byte {
 	case val.ValType == field.TypeTime:
 		// 微秒时间戳
 		dst = appendTime(isJson, dst, time.UnixMicro(val.Integer), val.String)
+
 	}
 
 	// 组装完成

@@ -56,12 +56,15 @@ const (
 
 	// 字符串型
 	TypeString
-
-	// 时间类型
-	TypeTime
-
 	// 错误类型
 	TypeError
+
+	//
+	// 时间类型
+	//
+
+	TypeTime
+	TypeDuration
 )
 
 // IsValidRange 是否在有效范围内
