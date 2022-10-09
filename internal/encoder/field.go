@@ -9,6 +9,11 @@ import (
 	"github.com/bearki/belog/v2/internal/convert"
 )
 
+// isValidRange 是否在有效范围内
+func isValidRange(minType, valType, maxType field.Type) bool {
+	return minType <= valType && valType <= maxType
+}
+
 // appendFieldValue 追加字段值
 func appendFieldValue(isJson bool, dst []byte, val field.Field) []byte {
 	// 是否为JSON格式
@@ -26,12 +31,17 @@ func appendFieldValue(isJson bool, dst []byte, val field.Field) []byte {
 	// 根据类型追加值
 	switch true {
 
+	// type == time
+	case val.ValType == field.TypeTime:
+		// 微秒时间戳
+		dst = appendTime(isJson, dst, time.UnixMicro(val.Integer), val.String)
+
 	// int8 <= type <= int64
-	case field.IsValidRange(field.TypeInt8, val.ValType, field.TypeInt64):
+	case isValidRange(field.TypeInt8, val.ValType, field.TypeInt64):
 		dst = strconv.AppendInt(dst, val.Integer, 10)
 
 	// uint8 <= type <= uint64
-	case field.IsValidRange(field.TypeUint8, val.ValType, field.TypeUint64):
+	case isValidRange(field.TypeUint8, val.ValType, field.TypeUint64):
 		dst = strconv.AppendUint(dst, uint64(val.Integer), 10)
 
 	// type == float32
@@ -59,7 +69,7 @@ func appendFieldValue(isJson bool, dst []byte, val field.Field) []byte {
 		dst = strconv.AppendBool(dst, convert.IntToBool(int(val.Integer)))
 
 	// string <= type == error
-	case field.IsValidRange(field.TypeString, val.ValType, field.TypeError):
+	case isValidRange(field.TypeString, val.ValType, field.TypeError):
 		// 是否为JSON格式
 		if isJson {
 			dst = append(dst, '"')
@@ -68,11 +78,6 @@ func appendFieldValue(isJson bool, dst []byte, val field.Field) []byte {
 		} else {
 			dst = append(dst, val.String...)
 		}
-
-	// type == time
-	case val.ValType == field.TypeTime:
-		// 微秒时间戳
-		dst = appendTime(isJson, dst, time.UnixMicro(val.Integer), val.String)
 
 	}
 

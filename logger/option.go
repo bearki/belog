@@ -1,6 +1,6 @@
 package logger
 
-import "github.com/bearki/belog/v2/encoder"
+import "github.com/bearki/belog/v2/internal/encoder"
 
 const (
 	// 需要跳过的最少调用栈层数

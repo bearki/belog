@@ -10,8 +10,8 @@ package logger
 import (
 	"time"
 
-	"github.com/bearki/belog/v2/encoder"
 	"github.com/bearki/belog/v2/field"
+	"github.com/bearki/belog/v2/internal/encoder"
 	"github.com/bearki/belog/v2/level"
 )
 

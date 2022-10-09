@@ -1,31 +1,21 @@
 package field
 
-// 字符串类型键值对序列化符号
-var (
-	stringValPrefix = [1]byte{'"'}
-	stringValSuffix = [1]byte{'"'}
-)
-
 // Type 字段的值类型
 type Type uint8
 
-// 类型枚举
 const (
+	// 时间类型
+	TypeTime Type = iota
 
-	//
 	// 有符号整型
-	//
-
-	TypeInt8 Type = iota
+	TypeInt8
 	TypeInt16
 	TypeInt
 	TypeInt32
+	TypeDuration
 	TypeInt64
 
-	//
 	// 无符号整型
-	//
-
 	TypeUint8
 	TypeByte
 	TypeUint16
@@ -34,17 +24,11 @@ const (
 	TypeUint32
 	TypeUint64
 
-	//
 	// 浮点型
-	//
-
 	TypeFloat32
 	TypeFloat64
 
-	//
 	// 复数型
-	//
-
 	TypeComplex64
 	TypeComplex128
 
@@ -58,19 +42,7 @@ const (
 	TypeString
 	// 错误类型
 	TypeError
-
-	//
-	// 时间类型
-	//
-
-	TypeTime
-	TypeDuration
 )
-
-// IsValidRange 是否在有效范围内
-func IsValidRange(minType, valType, maxType Type) bool {
-	return minType <= valType && valType <= maxType
-}
 
 // Field 键值对序列化结构体
 type Field struct {
