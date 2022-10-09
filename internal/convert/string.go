@@ -15,3 +15,8 @@ func StringToBytes(s string) []byte {
 	bh.Cap = sh.Len
 	return b
 }
+
+// BytesToString 字节切片转字符串
+func BytesToString(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
+}

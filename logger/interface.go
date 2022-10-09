@@ -36,7 +36,7 @@ type Adapter interface {
 	// @params lineNo 日志记录调用文件行号
 	//
 	// @params methodName 日志记录调用函数名
-	PrintStack(logTime time.Time, level level.Level, content []byte, fileName []byte, lineNo int, methodName []byte)
+	PrintStack(logTime time.Time, level level.Level, content []byte, fileName string, lineNo int, methodName string)
 
 	// Flush 日志缓存刷新
 	//

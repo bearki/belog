@@ -208,7 +208,7 @@ func (b *belog) Flush() {
 }
 
 // adapterPrintFunc 适配器打印方法
-type adapterPrintFunc func(t time.Time, l level.Level, c []byte, fn []byte, ln int, mn []byte)
+type adapterPrintFunc func(t time.Time, l level.Level, c []byte, fn string, ln int, mn string)
 
 // filterAdapterPrint 筛选合适的适配器
 func (b *belog) filterAdapterPrint() adapterPrintFunc {
@@ -222,7 +222,7 @@ func (b *belog) filterAdapterPrint() adapterPrintFunc {
 }
 
 // singleAdapterPrint 单适配器输出
-func (b *belog) singleAdapterPrint(t time.Time, l level.Level, c []byte, fn []byte, ln int, mn []byte) {
+func (b *belog) singleAdapterPrint(t time.Time, l level.Level, c []byte, fn string, ln int, mn string) {
 	// 加个读锁
 	b.adaptersRWMutex.RLock()
 
@@ -244,7 +244,7 @@ func (b *belog) singleAdapterPrint(t time.Time, l level.Level, c []byte, fn []by
 }
 
 // multipleAdapterPrint 多适配器输出
-func (b *belog) multipleAdapterPrint(t time.Time, l level.Level, c []byte, fn []byte, ln int, mn []byte) {
+func (b *belog) multipleAdapterPrint(t time.Time, l level.Level, c []byte, fn string, ln int, mn string) {
 	// 加个读锁
 	b.adaptersRWMutex.RLock()
 

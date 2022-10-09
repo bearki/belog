@@ -137,7 +137,7 @@ func (e *Adapter) Print(_ time.Time, level level.Level, content []byte) {
 // @params lineNo 日志记录调用文件行号
 //
 // @params methodName 日志记录调用函数名
-func (e *Adapter) PrintStack(_ time.Time, level level.Level, content []byte, _ []byte, _ int, _ []byte) {
+func (e *Adapter) PrintStack(_ time.Time, level level.Level, content []byte, _ string, _ int, _ string) {
 	// 是否禁用颜色
 	if !e.disabledColor {
 		oldBytes := []byte{'[', level.Byte(), ']'}

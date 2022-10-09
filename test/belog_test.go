@@ -82,8 +82,14 @@ func BenchmarkBelogLoggerFileWrite(b *testing.B) {
 
 // BenchmarkBelogLoggerFormat 测试belog标准记录器序列化
 func BenchmarkBelogLoggerFormat(b *testing.B) {
+	fileAdapter, _ := file.New(file.Options{
+		Async:        true,
+		AsyncChanCap: 10,
+	})
 	// 初始化一个实例(无适配器)
-	l, err := belog.New(logger.Option{})
+	l, err := belog.New(logger.Option{
+		// TimeFormat: encoder.TimeFormatUnixMilli,
+	}, fileAdapter)
 	if err != nil {
 		fmt.Printf("belog logger create failed, %s\r\n", err)
 		return
@@ -104,7 +110,7 @@ func BenchmarkBelogLoggerFormat(b *testing.B) {
 			field.Bool("key6", i%2 == 0),
 			field.Int("key7", i),
 			field.Bool("key8", i%2 == 0),
-			field.Int("key8", i),
+			field.String("key9", "不是编号编号分别为发布会我"),
 		)
 	}
 }

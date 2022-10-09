@@ -28,18 +28,31 @@ func appendFieldValue(dst []byte, val field.Field) []byte {
 	case val.ValType == field.TypeFloat64:
 		dst = strconv.AppendFloat(dst, math.Float64frombits(uint64(val.Integer)), 'E', -1, 64)
 
+	// type == complex64
+	case val.ValType == field.TypeComplex64:
+		dst = append(dst, strconv.FormatComplex(complex128(val.Interface.(complex64)), 'E', -1, 64)...)
+
+	// type == complex128
+	case val.ValType == field.TypeComplex128:
+		dst = append(dst, strconv.FormatComplex(val.Interface.(complex128), 'E', -1, 128)...)
+
 	// type == nil
 	case val.ValType == field.TypeNull:
 		dst = append(dst, val.String...)
 
+	// type == bool
+	case val.ValType == field.TypeBool:
+		dst = strconv.AppendBool(dst, convert.IntToBool(int(val.Integer)))
+
 	// bool <= type <= string
-	case field.IsValidRange(field.TypeBool, val.ValType, field.TypeString):
+	case val.ValType == field.TypeString:
 		dst = append(dst, '"')
 		dst = append(dst, val.String...)
 		dst = append(dst, '"')
 
 	}
 
+	// 组装完成
 	return dst
 }
 

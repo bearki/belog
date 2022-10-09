@@ -10,14 +10,9 @@ package field
 
 import (
 	"unsafe"
-)
 
-func boolToString(value bool) string {
-	if value {
-		return "true"
-	}
-	return "false"
-}
+	"github.com/bearki/belog/v2/internal/convert"
+)
 
 //------------------------------ 值类型转换 ------------------------------//
 
@@ -26,7 +21,7 @@ func Bool(name string, value bool) Field {
 	return Field{
 		Key:     name,
 		ValType: TypeBool,
-		String:  boolToString(value),
+		Integer: int64(convert.BoolToInt(value)),
 	}
 }
 

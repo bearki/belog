@@ -29,9 +29,9 @@ func (s *StandardBelog) format(t time.Time, l level.Level, msg string, val ...fi
 
 	// 声明空栈信息
 	var (
-		fn []byte
+		fn string
 		ln int
-		mn []byte
+		mn string
 	)
 
 	// 开始追加内容
@@ -65,9 +65,9 @@ func (s *StandardBelog) formatJSON(t time.Time, l level.Level, msg string, val .
 
 	// 声明空栈信息
 	var (
-		fn []byte
+		fn string
 		ln int
-		mn []byte
+		mn string
 	)
 
 	// 开始追加内容

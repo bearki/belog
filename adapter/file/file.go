@@ -242,7 +242,7 @@ func (e *Adapter) Print(_ time.Time, _ level.Level, c []byte) {
 // @params ln 日志记录调用文件行号
 //
 // @params mn 日志记录调用函数名
-func (e *Adapter) PrintStack(_ time.Time, _ level.Level, c []byte, _ []byte, _ int, _ []byte) {
+func (e *Adapter) PrintStack(_ time.Time, _ level.Level, c []byte, _ string, _ int, _ string) {
 	// 从对象池获取切片
 	logSlice := e.logBytesPool.Get()
 	// 检查是否需要扩容

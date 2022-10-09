@@ -1,11 +1,9 @@
 package encoder
 
 import (
-	"bytes"
 	"runtime"
 	"strconv"
-
-	"github.com/bearki/belog/v2/internal/convert"
+	"strings"
 )
 
 // GetCallStack 获取调用栈信息
@@ -17,16 +15,13 @@ import (
 // @return ln 行号
 //
 // @return mn 函数名
-func GetCallStack(skip uint) (fn []byte, ln int, mn []byte) {
+func GetCallStack(skip uint) (fn string, ln int, mn string) {
 	// 获取调用栈信息
-	pc, fileName, ln, _ := runtime.Caller(int(skip))
-
-	// 转换文件名
-	fn = convert.StringToBytes(fileName)
+	pc, fn, ln, _ := runtime.Caller(int(skip))
 
 	// 获取函数名字节切片
 	if funcForPC := runtime.FuncForPC(pc); funcForPC != nil {
-		mn = convert.StringToBytes(funcForPC.Name())
+		mn = funcForPC.Name()
 	}
 
 	// OK
@@ -49,16 +44,16 @@ func GetCallStack(skip uint) (fn []byte, ln int, mn []byte) {
 //
 // 返回示例，反引号内为实际内容:
 // `[test.go:100] [test.TestLogger]`
-func AppendStack(dst []byte, fullPath bool, fn []byte, ln int, mn []byte) []byte {
+func AppendStack(dst []byte, fullPath bool, fn string, ln int, mn string) []byte {
 	if !fullPath {
 		// 裁剪为基础文件名
-		index := bytes.LastIndexByte(fn, '/')
+		index := strings.LastIndexByte(fn, '/')
 		if index > -1 && index+1 < len(fn) {
 			fn = fn[index+1:]
 		}
 
 		// 裁剪为基础函数名
-		index = bytes.LastIndexByte(mn, '/')
+		index = strings.LastIndexByte(mn, '/')
 		if index > 0 && index+1 < len(mn) {
 			mn = mn[index+1:]
 		}
@@ -101,16 +96,16 @@ func AppendStack(dst []byte, fullPath bool, fn []byte, ln int, mn []byte) []byte
 //
 // 返回示例，反引号内为实际内容:
 // `"stack": {"file": "test.go", "line": 100, "method": "test.TestLogger"}`
-func AppendStackJSON(dst []byte, fullPath bool, stackKey string, fnKey string, fn []byte, lnKey string, ln int, mnKey string, mn []byte) []byte {
+func AppendStackJSON(dst []byte, fullPath bool, stackKey string, fnKey string, fn string, lnKey string, ln int, mnKey string, mn string) []byte {
 	if !fullPath {
 		// 裁剪为基础文件名
-		index := bytes.LastIndexByte(fn, '/')
+		index := strings.LastIndexByte(fn, '/')
 		if index > -1 && index+1 < len(fn) {
 			fn = fn[index+1:]
 		}
 
 		// 裁剪为基础函数名
-		index = bytes.LastIndexByte(mn, '/')
+		index = strings.LastIndexByte(mn, '/')
 		if index > 0 && index+1 < len(mn) {
 			mn = mn[index+1:]
 		}

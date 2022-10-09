@@ -17,8 +17,8 @@ const (
 	TypeInt32
 	TypeInt64
 
-	TypeByte
 	TypeUint8
+	TypeByte
 	TypeUint16
 	TypeUint
 	TypeUintptr
