@@ -12,21 +12,12 @@ func Time(name string, value time.Time, format ...string) Field {
 	if len(format) > 0 {
 		timeFmt = format[0]
 	}
-	return Field{
-		Key:     name,
-		ValType: TypeTime,
-		Integer: value.UnixMicro(), // 微秒时间戳
-		String:  timeFmt,
-	}
+	return Field{Key: name, ValType: TypeTime, Integer: value.UnixMicro(), String: timeFmt}
 }
 
 // Duration 格式化time.Duration类型字段信息
 func Duration(name string, value time.Duration) Field {
-	return Field{
-		Key:     name,
-		ValType: TypeDuration,
-		Integer: int64(value),
-	}
+	return Field{Key: name, ValType: TypeDuration, Integer: int64(value)}
 }
 
 //------------------------------ 指针类型转换 ------------------------------//
@@ -45,4 +36,20 @@ func Durationp(name string, valuep *time.Duration) Field {
 		return nullField(name)
 	}
 	return Duration(name, *valuep)
+}
+
+//------------------------------ 切片类型转换 ------------------------------//
+
+// Times 格式化[]time.Time类型字段信息
+func Times(name string, values []time.Time, format ...string) Field {
+	var timeFmt string
+	if len(format) > 0 {
+		timeFmt = format[0]
+	}
+	return Field{Key: name, ValType: TypeTimes, Interface: values, String: timeFmt}
+}
+
+// Durations 格式化[]time.Duration类型字段信息
+func Durations(name string, values []time.Duration) Field {
+	return Field{Key: name, ValType: TypeDurations, Interface: values}
 }

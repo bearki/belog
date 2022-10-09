@@ -16,11 +16,7 @@ import (
 
 // Bool 格式化bool类型字段信息
 func Bool(name string, value bool) Field {
-	return Field{
-		Key:     name,
-		ValType: TypeBool,
-		Integer: int64(convert.BoolToInt(value)),
-	}
+	return Field{Key: name, ValType: TypeBool, Integer: int64(convert.BoolToInt(value))}
 }
 
 //------------------------------ 指针类型转换 ------------------------------//
@@ -31,4 +27,11 @@ func Boolp(name string, valuep *bool) Field {
 		return nullField(name)
 	}
 	return Bool(name, *valuep)
+}
+
+//------------------------------ 切片类型转换 ------------------------------//
+
+// Bools 格式化[]bool类型字段信息
+func Bools(name string, values []bool) Field {
+	return Field{Key: name, ValType: TypeBools, Interface: values}
 }

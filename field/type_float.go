@@ -17,20 +17,12 @@ import (
 
 // Float32 格式化float32类型字段信息
 func Float32(name string, value float32) Field {
-	return Field{
-		Key:     name,
-		ValType: TypeFloat32,
-		Integer: int64(math.Float32bits(value)),
-	}
+	return Field{Key: name, ValType: TypeFloat32, Integer: int64(math.Float32bits(value))}
 }
 
 // Float64 格式化float64类型字段信息
 func Float64(name string, value float64) Field {
-	return Field{
-		Key:     name,
-		ValType: TypeFloat64,
-		Integer: int64(math.Float64bits(value)),
-	}
+	return Field{Key: name, ValType: TypeFloat64, Integer: int64(math.Float64bits(value))}
 }
 
 //------------------------------ 指针类型转换 ------------------------------//
@@ -49,4 +41,16 @@ func Float64p(name string, valuep *float64) Field {
 		return nullField(name)
 	}
 	return Float64(name, *valuep)
+}
+
+//------------------------------ 切片类型转换 ------------------------------//
+
+// Float32s 格式化[]float32类型字段信息
+func Float32s(name string, values []float32) Field {
+	return Field{Key: name, ValType: TypeFloat32s, Interface: values}
+}
+
+// Float64s 格式化[]float64类型字段信息
+func Float64s(name string, values []float64) Field {
+	return Field{Key: name, ValType: TypeFloat64s, Interface: values}
 }

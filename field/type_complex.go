@@ -13,20 +13,12 @@ package field
 
 // Complex64 格式化complex64类型字段信息
 func Complex64(name string, value complex64) Field {
-	return Field{
-		Key:       name,
-		ValType:   TypeComplex64,
-		Interface: value,
-	}
+	return Field{Key: name, ValType: TypeComplex64, Interface: value}
 }
 
 // Complex128 格式化complex128类型字段信息
 func Complex128(name string, value complex128) Field {
-	return Field{
-		Key:       name,
-		ValType:   TypeComplex128,
-		Interface: value,
-	}
+	return Field{Key: name, ValType: TypeComplex128, Interface: value}
 }
 
 //------------------------------ 指针类型转换 ------------------------------//
@@ -45,4 +37,16 @@ func Complex128p(name string, valuep *complex128) Field {
 		return nullField(name)
 	}
 	return Complex128(name, *valuep)
+}
+
+//------------------------------ 切片类型转换 ------------------------------//
+
+// Complex64s 格式化[]complex64类型字段信息
+func Complex64s(name string, values []complex64) Field {
+	return Field{Key: name, ValType: TypeComplex64s, Interface: values}
+}
+
+// Complex128s 格式化[]complex128类型字段信息
+func Complex128s(name string, values []complex128) Field {
+	return Field{Key: name, ValType: TypeComplex128s, Interface: values}
 }

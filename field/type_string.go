@@ -12,12 +12,7 @@ package field
 
 // String 格式化string类型字段信息
 func String(name string, value string) Field {
-	f := Field{
-		Key:     name,
-		ValType: TypeString,
-		String:  value,
-	}
-	return f
+	return Field{Key: name, ValType: TypeString, String: value}
 }
 
 //------------------------------ 指针类型转换 ------------------------------//
@@ -28,4 +23,11 @@ func Stringp(name string, valuep *string) Field {
 		return nullField(name)
 	}
 	return String(name, *valuep)
+}
+
+//------------------------------ 切片类型转换 ------------------------------//
+
+// Strings 格式化[]string类型字段信息
+func Strings(name string, values []string) Field {
+	return Field{Key: name, ValType: TypeStrings, Interface: values}
 }

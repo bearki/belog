@@ -9,13 +9,9 @@
 
 package field
 
-// intn 组装~int类型的字段结构
+// 组装~int类型的字段结构
 func intn(name string, value int64, vt Type) Field {
-	return Field{
-		Key:     name,
-		ValType: vt,
-		Integer: value,
-	}
+	return Field{Key: name, ValType: vt, Integer: value}
 }
 
 //------------------------------ 值类型转换 ------------------------------//
@@ -85,4 +81,31 @@ func Int64p(name string, valuep *int64) Field {
 		return nullField(name)
 	}
 	return Int64(name, *valuep)
+}
+
+//------------------------------ 切片类型转换 ------------------------------//
+
+// Int8s 格式化[]int8类型字段信息
+func Int8s(name string, values []int8) Field {
+	return Field{Key: name, ValType: TypeInt8s, Interface: values}
+}
+
+// Int16s 格式化[]int16类型字段信息
+func Int16s(name string, values []int16) Field {
+	return Field{Key: name, ValType: TypeInt16s, Interface: values}
+}
+
+// Ints 格式化[]int类型字段信息
+func Ints(name string, values []int) Field {
+	return Field{Key: name, ValType: TypeInts, Interface: values}
+}
+
+// Int32s 格式化[]int32类型字段信息
+func Int32s(name string, values []int32) Field {
+	return Field{Key: name, ValType: TypeInt32s, Interface: values}
+}
+
+// Int64s 格式化[]int64类型字段信息
+func Int64s(name string, values []int64) Field {
+	return Field{Key: name, ValType: TypeInt64s, Interface: values}
 }

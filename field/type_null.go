@@ -11,9 +11,5 @@ package field
 //
 // @params name 字段名称
 func nullField(name string) Field {
-	return Field{
-		Key:     name,
-		ValType: TypeNull,
-		String:  "null",
-	}
+	return Field{Key: name, ValType: TypeNull, String: "null"}
 }
