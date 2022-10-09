@@ -9,10 +9,6 @@
 
 package field
 
-import (
-	"unsafe"
-)
-
 // uintn 组装~uint类型的字段结构
 func uintn(name string, value int64, vt Type) Field {
 	return Field{
@@ -63,56 +59,56 @@ func Uint64(name string, value uint64) Field {
 
 // Bytep 格式化*byte类型字段信息
 func Bytep(name string, valuep *byte) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
+	if valuep == nil {
+		return nullField(name)
 	}
 	return Uint64(name, uint64(*valuep))
 }
 
 // Uint8p 格式化*uint8类型字段信息
 func Uint8p(name string, valuep *uint8) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
+	if valuep == nil {
+		return nullField(name)
 	}
 	return Uint64(name, uint64(*valuep))
 }
 
 // Uint16p 格式化*uint16类型字段信息
 func Uint16p(name string, valuep *uint16) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
+	if valuep == nil {
+		return nullField(name)
 	}
 	return Uint64(name, uint64(*valuep))
 }
 
 // Uintp 格式化*uint类型字段信息
 func Uintp(name string, valuep *uint) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
+	if valuep == nil {
+		return nullField(name)
 	}
 	return Uint64(name, uint64(*valuep))
 }
 
 // Uintptrp 格式化*uintptr类型字段信息
 func Uintptrp(name string, valuep *uintptr) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
+	if valuep == nil {
+		return nullField(name)
 	}
 	return Uint64(name, uint64(*valuep))
 }
 
 // Uint32p 格式化*uint32类型字段信息
 func Uint32p(name string, valuep *uint32) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
+	if valuep == nil {
+		return nullField(name)
 	}
 	return Uint64(name, uint64(*valuep))
 }
 
 // Uint64p 格式化*uint64类型字段信息
 func Uint64p(name string, valuep *uint64) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
+	if valuep == nil {
+		return nullField(name)
 	}
 	return Uint64(name, uint64(*valuep))
 }

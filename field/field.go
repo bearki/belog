@@ -59,6 +59,9 @@ const (
 
 	// 时间类型
 	TypeTime
+
+	// 错误类型
+	TypeError
 )
 
 // IsValidRange 是否在有效范围内

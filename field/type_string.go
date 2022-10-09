@@ -8,10 +8,6 @@
 
 package field
 
-import (
-	"unsafe"
-)
-
 //------------------------------ 值类型转换 ------------------------------//
 
 // String 格式化string类型字段信息
@@ -28,8 +24,8 @@ func String(name string, value string) Field {
 
 // Boolp 格式化*string类型字段信息
 func Stringp(name string, valuep *string) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
+	if valuep == nil {
+		return nullField(name)
 	}
 	return String(name, *valuep)
 }

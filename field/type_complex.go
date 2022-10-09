@@ -9,10 +9,6 @@
 
 package field
 
-import (
-	"unsafe"
-)
-
 //------------------------------ 值类型转换 ------------------------------//
 
 // Complex64 格式化complex64类型字段信息
@@ -37,16 +33,16 @@ func Complex128(name string, value complex128) Field {
 
 // Complex64 格式化*complex64类型字段信息
 func Complex64p(name string, valuep *complex64) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
+	if valuep == nil {
+		return nullField(name)
 	}
 	return Complex64(name, *valuep)
 }
 
 // Complex128p 格式化*complex128类型字段信息
 func Complex128p(name string, valuep *complex128) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
+	if valuep == nil {
+		return nullField(name)
 	}
 	return Complex128(name, *valuep)
 }

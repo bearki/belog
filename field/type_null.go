@@ -1,37 +1,19 @@
 /**
- * @Title 对任意指针类型进行判断
- * @Desc 支持所有指针检查，为空时将输出null
+ * @Title 空类型处理
+ * @Desc 输出null
  * @Author Bearki
  * @DateTime 2022/09/17 21:46
  */
 
 package field
 
-import (
-	"unsafe"
-)
-
-// CheckPtr 检查任意字段的值指针
-//
-// 注意: 指针为空时将会输出null
+// 创建null值字段
 //
 // @params name 字段名称
-//
-// @params value 任意类型指针
-//
-// @return 当指针为空时会创建null的字段数据
-//
-// @return 指针是否为空
-func CheckPtr(name string, value unsafe.Pointer) (Field, bool) {
-	// 检查指针是否为空
-	if value == nil {
-		// 指针为空，检查不通过
-		return Field{
-			Key:     name,
-			ValType: TypeNull,
-			String:  "null",
-		}, false
+func nullField(name string) Field {
+	return Field{
+		Key:     name,
+		ValType: TypeNull,
+		String:  "null",
 	}
-	// 指针不为空，检查通过
-	return Field{}, true
 }

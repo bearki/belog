@@ -2,7 +2,6 @@ package field
 
 import (
 	"time"
-	"unsafe"
 )
 
 //------------------------------ 值类型转换 ------------------------------//
@@ -25,8 +24,8 @@ func Time(name string, value time.Time, format ...string) Field {
 
 // Timep 格式化*time.Time类型字段信息
 func Timep(name string, valuep *time.Time, format ...string) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
+	if valuep == nil {
+		return nullField(name)
 	}
 	return Time(name, *valuep, format...)
 }

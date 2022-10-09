@@ -9,8 +9,6 @@
 package field
 
 import (
-	"unsafe"
-
 	"github.com/bearki/belog/v2/internal/convert"
 )
 
@@ -29,8 +27,8 @@ func Bool(name string, value bool) Field {
 
 // Boolp 格式化*bool类型字段信息
 func Boolp(name string, valuep *bool) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
+	if valuep == nil {
+		return nullField(name)
 	}
 	return Bool(name, *valuep)
 }

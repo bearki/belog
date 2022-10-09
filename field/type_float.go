@@ -11,7 +11,6 @@ package field
 
 import (
 	"math"
-	"unsafe"
 )
 
 //------------------------------ 值类型转换 ------------------------------//
@@ -38,16 +37,16 @@ func Float64(name string, value float64) Field {
 
 // Float32p 格式化*float32类型字段信息
 func Float32p(name string, valuep *float32) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
+	if valuep == nil {
+		return nullField(name)
 	}
 	return Float32(name, *valuep)
 }
 
 // Float64p 格式化*float64类型字段信息
 func Float64p(name string, valuep *float64) Field {
-	if f, ok := CheckPtr(name, unsafe.Pointer(valuep)); !ok {
-		return f
+	if valuep == nil {
+		return nullField(name)
 	}
 	return Float64(name, *valuep)
 }
