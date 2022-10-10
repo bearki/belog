@@ -24,5 +24,8 @@ func Errorp(key string, valp *error) Field {
 
 // Errors 格式化[]error类型字段信息
 func Errors(key string, vals []error) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeErrors, Interface: vals}
 }

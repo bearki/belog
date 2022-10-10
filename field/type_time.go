@@ -2,6 +2,8 @@ package field
 
 import (
 	"time"
+
+	"github.com/bearki/belog/v2/internal/convert"
 )
 
 //------------------------------ 值类型转换 ------------------------------//
@@ -12,7 +14,7 @@ func Time(key string, val time.Time, format ...string) Field {
 	if len(format) > 0 {
 		timeFmt = format[0]
 	}
-	return Field{Key: key, Type: TypeTime, Integer: val.UnixMicro(), String: timeFmt}
+	return Field{Key: key, Type: TypeTime, Integer: convert.TimeToInt64(val), String: timeFmt}
 }
 
 // Duration 格式化time.Duration类型字段信息
@@ -42,6 +44,9 @@ func Durationp(key string, valp *time.Duration) Field {
 
 // Times 格式化[]time.Time类型字段信息
 func Times(key string, vals []time.Time, format ...string) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	var timeFmt string
 	if len(format) > 0 {
 		timeFmt = format[0]
@@ -51,5 +56,8 @@ func Times(key string, vals []time.Time, format ...string) Field {
 
 // Durations 格式化[]time.Duration类型字段信息
 func Durations(key string, vals []time.Duration) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeDurations, Interface: vals}
 }

@@ -108,35 +108,56 @@ func Uint64p(key string, valp *uint64) Field {
 
 // Bytes 格式化byte类型字段信息
 func Bytes(key string, vals []byte) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeBytes, Interface: vals}
 }
 
 // Uint8s 格式化uint8类型字段信息
 func Uint8s(key string, vals []uint8) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeUint8s, Interface: vals}
 }
 
 // Uint16s 格式化uint16类型字段信息
 func Uint16s(key string, vals []uint16) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeUint16s, Interface: vals}
 }
 
 // Uints 格式化uint类型字段信息
 func Uints(key string, vals []uint) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeUints, Interface: vals}
 }
 
 // Uintptrs 格式化uintptr类型字段信息
 func Uintptrs(key string, vals []uintptr) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeUintptrs, Interface: vals}
 }
 
 // Uint32s 格式化uint32类型字段信息
 func Uint32s(key string, vals []uint32) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeUint32s, Interface: vals}
 }
 
 // Uint64s 格式化uint64类型字段信息
 func Uint64s(key string, vals []uint64) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeUint64s, Interface: vals}
 }

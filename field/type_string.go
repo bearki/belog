@@ -29,5 +29,8 @@ func Stringp(key string, valp *string) Field {
 
 // Strings 格式化[]string类型字段信息
 func Strings(key string, vals []string) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeStrings, Interface: vals}
 }

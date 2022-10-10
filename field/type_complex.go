@@ -43,10 +43,16 @@ func Complex128p(key string, valp *complex128) Field {
 
 // Complex64s 格式化[]complex64类型字段信息
 func Complex64s(key string, vals []complex64) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeComplex64s, Interface: vals}
 }
 
 // Complex128s 格式化[]complex128类型字段信息
 func Complex128s(key string, vals []complex128) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeComplex128s, Interface: vals}
 }

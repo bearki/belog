@@ -4,23 +4,26 @@ package field
 type Type uint8
 
 const (
+	/*---------------------- 普通类型开始 ----------------------*/
+	NormalTypeStart Type = iota
+
 	// 时间类型
-	TypeTime Type = iota
+	TypeTime
 	// 有符号整型
 	TypeInt8
 	TypeInt16
 	TypeInt
 	TypeInt32
-	TypeDuration
 	TypeInt64
+	TypeDuration
 	// 无符号整型
 	TypeUint8
-	TypeByte
 	TypeUint16
 	TypeUint
-	TypeUintptr
 	TypeUint32
 	TypeUint64
+	TypeByte
+	TypeUintptr
 	// 浮点型
 	TypeFloat32
 	TypeFloat64
@@ -37,6 +40,12 @@ const (
 	TypeError
 	// 自定义类型
 	TypeObjecter
+
+	/*---------------------- 普通类型结束 ----------------------*/
+	NormalTypeEnd
+
+	/*---------------------- 切片类型开始 ----------------------*/
+	SliceTypeStart
 
 	// 时间类型切片
 	TypeTimes
@@ -67,4 +76,9 @@ const (
 	TypeStrings
 	// 错误类型切片
 	TypeErrors
+	// 自定义类型切片
+	TypeObjecters
+
+	/*---------------------- 切片类型结束 ----------------------*/
+	SliceTypeEnd
 )

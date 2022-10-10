@@ -82,6 +82,11 @@ func BenchmarkBelogLoggerFileWrite(b *testing.B) {
 
 // BenchmarkBelogLoggerFormat 测试belog标准记录器序列化
 func BenchmarkBelogLoggerFormat(b *testing.B) {
+	// fa, _ := file.New(file.Options{
+	// 	LogPath:  "logs/app.log",
+	// 	MaxSize:  20,
+	// 	MaxLines: 10000000000,
+	// })
 	// 初始化一个实例(无适配器)
 	l, err := belog.New(logger.DefaultOption)
 	if err != nil {
@@ -105,6 +110,7 @@ func BenchmarkBelogLoggerFormat(b *testing.B) {
 			field.Int("key7", i),
 			field.Bool("key8", i%2 == 0),
 			field.String("key9", "不是编号编号分别为发布会我"),
+			field.Ints("int10", []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0}),
 		)
 	}
 }

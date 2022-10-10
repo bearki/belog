@@ -1,14 +1,14 @@
 package convert
 
-// BoolToInt 布尔型转整型
-func BoolToInt(value bool) int {
+// BoolToInt64 布尔型转整型
+func BoolToInt64(value bool) int64 {
 	if !value {
 		return 0
 	}
 	return 1
 }
 
-// IntToBool 整型转布尔型
-func IntToBool(value int) bool {
+// BoolFromInt64 整型转布尔型
+func BoolFromInt64(value int64) bool {
 	return value != 0
 }

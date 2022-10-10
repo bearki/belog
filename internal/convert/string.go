@@ -16,7 +16,7 @@ func StringToBytes(s string) []byte {
 	return b
 }
 
-// BytesToString 字节切片转字符串
-func BytesToString(b []byte) string {
+// StringFromBytes 字节切片转字符串
+func StringFromBytes(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }

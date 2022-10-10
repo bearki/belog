@@ -47,10 +47,16 @@ func Float64p(key string, valp *float64) Field {
 
 // Float32s 格式化[]float32类型字段信息
 func Float32s(key string, vals []float32) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeFloat32s, Interface: vals}
 }
 
 // Float64s 格式化[]float64类型字段信息
 func Float64s(key string, vals []float64) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeFloat64s, Interface: vals}
 }

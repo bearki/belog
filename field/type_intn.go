@@ -87,25 +87,40 @@ func Int64p(key string, valp *int64) Field {
 
 // Int8s 格式化[]int8类型字段信息
 func Int8s(key string, vals []int8) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeInt8s, Interface: vals}
 }
 
 // Int16s 格式化[]int16类型字段信息
 func Int16s(key string, vals []int16) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeInt16s, Interface: vals}
 }
 
 // Ints 格式化[]int类型字段信息
 func Ints(key string, vals []int) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeInts, Interface: vals}
 }
 
 // Int32s 格式化[]int32类型字段信息
 func Int32s(key string, vals []int32) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeInt32s, Interface: vals}
 }
 
 // Int64s 格式化[]int64类型字段信息
 func Int64s(key string, vals []int64) Field {
+	if vals == nil {
+		return nullField(key)
+	}
 	return Field{Key: key, Type: TypeInt64s, Interface: vals}
 }

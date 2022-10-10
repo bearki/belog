@@ -25,7 +25,7 @@ type StandardBelog struct {
 // 2022/09/14 20:28:13.793 [T]  k1: v1, k2: v2, ..., this is test msg\r\n
 func (s *StandardBelog) format(t time.Time, l level.Level, msg string, val ...field.Field) {
 	// 从对象池中获取一个日志字节流对象
-	logBytes := logBytesPool.Get()
+	c := logBytesPool.Get()
 
 	// 声明空栈信息
 	var (
@@ -35,25 +35,25 @@ func (s *StandardBelog) format(t time.Time, l level.Level, msg string, val ...fi
 	)
 
 	// 开始追加内容
-	logBytes = encoder.AppendTime(logBytes, t, s.timeFormat)
-	logBytes = append(logBytes, ' ')
-	logBytes = encoder.AppendLevel(logBytes, l, s.levelFormat)
+	c = encoder.AppendTime(c, t, s.timeFormat)
+	c = append(c, ' ')
+	c = encoder.AppendLevel(c, l, s.levelFormat)
 	if s.printCallStack {
 		fn, ln, mn = encoder.GetCallStack(s.stackSkip)
-		logBytes = append(logBytes, ' ')
-		logBytes = encoder.AppendStack(logBytes, s.callStackFullPath, fn, ln, mn)
+		c = append(c, ' ')
+		c = encoder.AppendStack(c, s.callStackFullPath, fn, ln, mn)
 	}
-	logBytes = append(logBytes, ' ', ' ')
-	logBytes = encoder.AppendFieldAndMsg(logBytes, msg, val...)
-	logBytes = append(logBytes, "\r\n"...)
+	c = append(c, ' ', ' ')
+	c = encoder.AppendFieldAndMsg(c, msg, val...)
+	c = append(c, "\r\n"...)
 
 	// 选择合适的适配器执行输出
 	adapterPrint := s.filterAdapterPrint()
-	adapterPrint(t, l, logBytes, fn, ln, mn)
+	adapterPrint(t, l, c, fn, ln, mn)
 
 	// 避免使用defer，会有些许性能损耗
 	// 回收切片
-	logBytesPool.Put(logBytes)
+	logBytesPool.Put(c)
 }
 
 // formatJSON 序列化为JSON格式
@@ -61,7 +61,7 @@ func (s *StandardBelog) format(t time.Time, l level.Level, msg string, val ...fi
 // {"$(timeKey)": "$(2006/01/02 15:04:05.000)", "$(levelKey)": "D", "$(fieldsKey)": {$("k1": v1, "k2": "v2", ...)}, "$(msgKey)": "this is test msg"}\r\n
 func (s *StandardBelog) formatJSON(t time.Time, l level.Level, msg string, val ...field.Field) {
 	// 从对象池中获取一个日志字节流对象
-	logBytes := logBytesPool.Get()
+	c := logBytesPool.Get()
 
 	// 声明空栈信息
 	var (
@@ -71,31 +71,31 @@ func (s *StandardBelog) formatJSON(t time.Time, l level.Level, msg string, val .
 	)
 
 	// 开始追加内容
-	logBytes = append(logBytes, '{')
-	logBytes = encoder.AppendTimeJSON(logBytes, s.timeJsonKey, t, s.timeFormat)
-	logBytes = append(logBytes, `, `...)
-	logBytes = encoder.AppendLevelJSON(logBytes, s.levelJsonKey, l, s.levelFormat)
-	logBytes = append(logBytes, `, `...)
+	c = append(c, '{')
+	c = encoder.AppendTimeJSON(c, s.timeJsonKey, t, s.timeFormat)
+	c = append(c, `, `...)
+	c = encoder.AppendLevelJSON(c, s.levelJsonKey, l, s.levelFormat)
+	c = append(c, `, `...)
 	if s.printCallStack {
 		fn, ln, mn = encoder.GetCallStack(s.stackSkip)
-		logBytes = encoder.AppendStackJSON(
-			logBytes, s.callStackFullPath, s.stackJsonKey,
+		c = encoder.AppendStackJSON(
+			c, s.callStackFullPath, s.stackJsonKey,
 			s.stackFileJsonKey, fn,
 			s.stackLineNoJsonKey, ln,
 			s.stackMethodJsonKey, mn,
 		)
-		logBytes = append(logBytes, `, `...)
+		c = append(c, `, `...)
 	}
-	logBytes = encoder.AppendFieldAndMsgJSON(logBytes, s.messageJsonKey, msg, s.fieldsJsonKey, val...)
-	logBytes = append(logBytes, "}\r\n"...)
+	c = encoder.AppendFieldAndMsgJSON(c, s.messageJsonKey, msg, s.fieldsJsonKey, val...)
+	c = append(c, "}\r\n"...)
 
 	// 选择合适的适配器执行输出
 	adapterPrint := s.filterAdapterPrint()
-	adapterPrint(t, l, logBytes, fn, ln, mn)
+	adapterPrint(t, l, c, fn, ln, mn)
 
 	// 避免使用defer，会有些许性能损耗
 	// 回收切片
-	logBytesPool.Put(logBytes)
+	logBytesPool.Put(c)
 }
 
 // check 高性能日志前置判断和序列化
