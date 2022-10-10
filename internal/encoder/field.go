@@ -32,44 +32,44 @@ func appendFieldValue(isJson bool, dst []byte, val field.Field) []byte {
 	switch true {
 
 	// type == time
-	case val.ValType == field.TypeTime:
+	case val.Type == field.TypeTime:
 		// 微秒时间戳
 		dst = appendTime(isJson, dst, time.UnixMicro(val.Integer), val.String)
 
 	// int8 <= type <= int64
-	case isValidRange(field.TypeInt8, val.ValType, field.TypeInt64):
+	case isValidRange(field.TypeInt8, val.Type, field.TypeInt64):
 		dst = strconv.AppendInt(dst, val.Integer, 10)
 
 	// uint8 <= type <= uint64
-	case isValidRange(field.TypeUint8, val.ValType, field.TypeUint64):
+	case isValidRange(field.TypeUint8, val.Type, field.TypeUint64):
 		dst = strconv.AppendUint(dst, uint64(val.Integer), 10)
 
 	// type == float32
-	case val.ValType == field.TypeFloat32:
+	case val.Type == field.TypeFloat32:
 		dst = strconv.AppendFloat(dst, float64(math.Float32frombits(uint32(val.Integer))), 'E', -1, 32)
 
 	// type == float64
-	case val.ValType == field.TypeFloat64:
+	case val.Type == field.TypeFloat64:
 		dst = strconv.AppendFloat(dst, math.Float64frombits(uint64(val.Integer)), 'E', -1, 64)
 
 	// type == complex64
-	case val.ValType == field.TypeComplex64:
+	case val.Type == field.TypeComplex64:
 		dst = append(dst, strconv.FormatComplex(complex128(val.Interface.(complex64)), 'E', -1, 64)...)
 
 	// type == complex128
-	case val.ValType == field.TypeComplex128:
+	case val.Type == field.TypeComplex128:
 		dst = append(dst, strconv.FormatComplex(val.Interface.(complex128), 'E', -1, 128)...)
 
 	// type == nil
-	case val.ValType == field.TypeNull:
+	case val.Type == field.TypeNull:
 		dst = append(dst, val.String...)
 
 	// type == bool
-	case val.ValType == field.TypeBool:
+	case val.Type == field.TypeBool:
 		dst = strconv.AppendBool(dst, convert.IntToBool(int(val.Integer)))
 
 	// string <= type == error
-	case isValidRange(field.TypeString, val.ValType, field.TypeError):
+	case isValidRange(field.TypeString, val.Type, field.TypeError):
 		// 是否为JSON格式
 		if isJson {
 			dst = append(dst, '"')
@@ -79,6 +79,14 @@ func appendFieldValue(isJson bool, dst []byte, val field.Field) []byte {
 			dst = append(dst, val.String...)
 		}
 
+	// type == Objecter
+	case val.Type == field.TypeObjecter:
+		// 是否为JSON格式
+		if isJson {
+			dst = append(dst, val.Interface.(field.Objecter).ToJSON()...)
+		} else {
+			dst = append(dst, val.Interface.(field.Objecter).ToString()...)
+		}
 	}
 
 	// 组装完成

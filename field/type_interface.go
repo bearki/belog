@@ -1,7 +1,7 @@
 package field
 
-// func Interface(key string, value interface{}) Field {
-// 	switch val := value.(type) {
+// func Interface(key string, val interface{}) Field {
+// 	switch val := val.(type) {
 // 	case bool:
 // 		return Bool(key, val)
 // 	case *bool:

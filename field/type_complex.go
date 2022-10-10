@@ -12,41 +12,41 @@ package field
 //------------------------------ 值类型转换 ------------------------------//
 
 // Complex64 格式化complex64类型字段信息
-func Complex64(name string, value complex64) Field {
-	return Field{Key: name, ValType: TypeComplex64, Interface: value}
+func Complex64(key string, val complex64) Field {
+	return Field{Key: key, Type: TypeComplex64, Interface: val}
 }
 
 // Complex128 格式化complex128类型字段信息
-func Complex128(name string, value complex128) Field {
-	return Field{Key: name, ValType: TypeComplex128, Interface: value}
+func Complex128(key string, val complex128) Field {
+	return Field{Key: key, Type: TypeComplex128, Interface: val}
 }
 
 //------------------------------ 指针类型转换 ------------------------------//
 
 // Complex64 格式化*complex64类型字段信息
-func Complex64p(name string, valuep *complex64) Field {
-	if valuep == nil {
-		return nullField(name)
+func Complex64p(key string, valp *complex64) Field {
+	if valp == nil {
+		return nullField(key)
 	}
-	return Complex64(name, *valuep)
+	return Complex64(key, *valp)
 }
 
 // Complex128p 格式化*complex128类型字段信息
-func Complex128p(name string, valuep *complex128) Field {
-	if valuep == nil {
-		return nullField(name)
+func Complex128p(key string, valp *complex128) Field {
+	if valp == nil {
+		return nullField(key)
 	}
-	return Complex128(name, *valuep)
+	return Complex128(key, *valp)
 }
 
 //------------------------------ 切片类型转换 ------------------------------//
 
 // Complex64s 格式化[]complex64类型字段信息
-func Complex64s(name string, values []complex64) Field {
-	return Field{Key: name, ValType: TypeComplex64s, Interface: values}
+func Complex64s(key string, vals []complex64) Field {
+	return Field{Key: key, Type: TypeComplex64s, Interface: vals}
 }
 
 // Complex128s 格式化[]complex128类型字段信息
-func Complex128s(name string, values []complex128) Field {
-	return Field{Key: name, ValType: TypeComplex128s, Interface: values}
+func Complex128s(key string, vals []complex128) Field {
+	return Field{Key: key, Type: TypeComplex128s, Interface: vals}
 }

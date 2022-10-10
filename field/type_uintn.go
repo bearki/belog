@@ -1,8 +1,8 @@
 /**
  * @Title 整型及整型指针的键值对序列化
  * @Desc 支持对以下类型进行序列化:
- * @Desc uint64|uint32|uint|uint16|uint8|byte
- * @Desc *uint64|*uint32|*uint|*uint16|*uint8|*byte
+ * @Desc uint64|uint32|uint|uint16|uint8|byte|uintptr
+ * @Desc *uint64|*uint32|*uint|*uint16|*uint8|*byte|uintptr
  * @Author Bearki
  * @DateTime 2022/09/17 21:46
  */
@@ -12,131 +12,131 @@ package field
 //------------------------------ 值类型转换 ------------------------------//
 
 // Byte 格式化byte类型字段信息
-func Byte(name string, value byte) Field {
-	return intn(name, int64(value), TypeByte)
+func Byte(key string, val byte) Field {
+	return intn(key, int64(val), TypeByte)
 }
 
 // Uint8 格式化uint8类型字段信息
-func Uint8(name string, value uint8) Field {
-	return intn(name, int64(value), TypeUint8)
+func Uint8(key string, val uint8) Field {
+	return intn(key, int64(val), TypeUint8)
 }
 
 // Uint16 格式化uint16类型字段信息
-func Uint16(name string, value uint16) Field {
-	return intn(name, int64(value), TypeUint16)
+func Uint16(key string, val uint16) Field {
+	return intn(key, int64(val), TypeUint16)
 }
 
 // Uint 格式化uint类型字段信息
-func Uint(name string, value uint) Field {
-	return intn(name, int64(value), TypeUint)
+func Uint(key string, val uint) Field {
+	return intn(key, int64(val), TypeUint)
 }
 
 // Uintptr 格式化uintptr类型字段信息
-func Uintptr(name string, value uintptr) Field {
-	return intn(name, int64(value), TypeUintptr)
+func Uintptr(key string, val uintptr) Field {
+	return intn(key, int64(val), TypeUintptr)
 }
 
 // Uint32 格式化uint32类型字段信息
-func Uint32(name string, value uint32) Field {
-	return intn(name, int64(value), TypeUint32)
+func Uint32(key string, val uint32) Field {
+	return intn(key, int64(val), TypeUint32)
 }
 
 // Uint64 格式化uint64类型字段信息
-func Uint64(name string, value uint64) Field {
-	return intn(name, int64(value), TypeUint64)
+func Uint64(key string, val uint64) Field {
+	return intn(key, int64(val), TypeUint64)
 }
 
 //------------------------------ 指针类型转换 ------------------------------//
 
 // Bytep 格式化*byte类型字段信息
-func Bytep(name string, valuep *byte) Field {
-	if valuep == nil {
-		return nullField(name)
+func Bytep(key string, valp *byte) Field {
+	if valp == nil {
+		return nullField(key)
 	}
-	return Byte(name, *valuep)
+	return Byte(key, *valp)
 }
 
 // Uint8p 格式化*uint8类型字段信息
-func Uint8p(name string, valuep *uint8) Field {
-	if valuep == nil {
-		return nullField(name)
+func Uint8p(key string, valp *uint8) Field {
+	if valp == nil {
+		return nullField(key)
 	}
-	return Uint8(name, *valuep)
+	return Uint8(key, *valp)
 }
 
 // Uint16p 格式化*uint16类型字段信息
-func Uint16p(name string, valuep *uint16) Field {
-	if valuep == nil {
-		return nullField(name)
+func Uint16p(key string, valp *uint16) Field {
+	if valp == nil {
+		return nullField(key)
 	}
-	return Uint16(name, *valuep)
+	return Uint16(key, *valp)
 }
 
 // Uintp 格式化*uint类型字段信息
-func Uintp(name string, valuep *uint) Field {
-	if valuep == nil {
-		return nullField(name)
+func Uintp(key string, valp *uint) Field {
+	if valp == nil {
+		return nullField(key)
 	}
-	return Uint(name, *valuep)
+	return Uint(key, *valp)
 }
 
 // Uintptrp 格式化*uintptr类型字段信息
-func Uintptrp(name string, valuep *uintptr) Field {
-	if valuep == nil {
-		return nullField(name)
+func Uintptrp(key string, valp *uintptr) Field {
+	if valp == nil {
+		return nullField(key)
 	}
-	return Uintptr(name, *valuep)
+	return Uintptr(key, *valp)
 }
 
 // Uint32p 格式化*uint32类型字段信息
-func Uint32p(name string, valuep *uint32) Field {
-	if valuep == nil {
-		return nullField(name)
+func Uint32p(key string, valp *uint32) Field {
+	if valp == nil {
+		return nullField(key)
 	}
-	return Uint32(name, *valuep)
+	return Uint32(key, *valp)
 }
 
 // Uint64p 格式化*uint64类型字段信息
-func Uint64p(name string, valuep *uint64) Field {
-	if valuep == nil {
-		return nullField(name)
+func Uint64p(key string, valp *uint64) Field {
+	if valp == nil {
+		return nullField(key)
 	}
-	return Uint64(name, *valuep)
+	return Uint64(key, *valp)
 }
 
 //------------------------------ 切片类型转换 ------------------------------//
 
 // Bytes 格式化byte类型字段信息
-func Bytes(name string, values []byte) Field {
-	return Field{Key: name, ValType: TypeBytes, Interface: values}
+func Bytes(key string, vals []byte) Field {
+	return Field{Key: key, Type: TypeBytes, Interface: vals}
 }
 
 // Uint8s 格式化uint8类型字段信息
-func Uint8s(name string, values []uint8) Field {
-	return Field{Key: name, ValType: TypeUint8s, Interface: values}
+func Uint8s(key string, vals []uint8) Field {
+	return Field{Key: key, Type: TypeUint8s, Interface: vals}
 }
 
 // Uint16s 格式化uint16类型字段信息
-func Uint16s(name string, values []uint16) Field {
-	return Field{Key: name, ValType: TypeUint16s, Interface: values}
+func Uint16s(key string, vals []uint16) Field {
+	return Field{Key: key, Type: TypeUint16s, Interface: vals}
 }
 
 // Uints 格式化uint类型字段信息
-func Uints(name string, values []uint) Field {
-	return Field{Key: name, ValType: TypeUints, Interface: values}
+func Uints(key string, vals []uint) Field {
+	return Field{Key: key, Type: TypeUints, Interface: vals}
 }
 
 // Uintptrs 格式化uintptr类型字段信息
-func Uintptrs(name string, values []uintptr) Field {
-	return Field{Key: name, ValType: TypeUintptrs, Interface: values}
+func Uintptrs(key string, vals []uintptr) Field {
+	return Field{Key: key, Type: TypeUintptrs, Interface: vals}
 }
 
 // Uint32s 格式化uint32类型字段信息
-func Uint32s(name string, values []uint32) Field {
-	return Field{Key: name, ValType: TypeUint32s, Interface: values}
+func Uint32s(key string, vals []uint32) Field {
+	return Field{Key: key, Type: TypeUint32s, Interface: vals}
 }
 
 // Uint64s 格式化uint64类型字段信息
-func Uint64s(name string, values []uint64) Field {
-	return Field{Key: name, ValType: TypeUint64s, Interface: values}
+func Uint64s(key string, vals []uint64) Field {
+	return Field{Key: key, Type: TypeUint64s, Interface: vals}
 }

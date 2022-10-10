@@ -7,49 +7,49 @@ import (
 //------------------------------ 值类型转换 ------------------------------//
 
 // Time 格式化time.Time类型字段信息
-func Time(name string, value time.Time, format ...string) Field {
+func Time(key string, val time.Time, format ...string) Field {
 	var timeFmt string
 	if len(format) > 0 {
 		timeFmt = format[0]
 	}
-	return Field{Key: name, ValType: TypeTime, Integer: value.UnixMicro(), String: timeFmt}
+	return Field{Key: key, Type: TypeTime, Integer: val.UnixMicro(), String: timeFmt}
 }
 
 // Duration 格式化time.Duration类型字段信息
-func Duration(name string, value time.Duration) Field {
-	return Field{Key: name, ValType: TypeDuration, Integer: int64(value)}
+func Duration(key string, val time.Duration) Field {
+	return Field{Key: key, Type: TypeDuration, Integer: int64(val)}
 }
 
 //------------------------------ 指针类型转换 ------------------------------//
 
 // Timep 格式化*time.Time类型字段信息
-func Timep(name string, valuep *time.Time, format ...string) Field {
-	if valuep == nil {
-		return nullField(name)
+func Timep(key string, valp *time.Time, format ...string) Field {
+	if valp == nil {
+		return nullField(key)
 	}
-	return Time(name, *valuep, format...)
+	return Time(key, *valp, format...)
 }
 
 // Durationp 格式化*time.Duration类型字段信息
-func Durationp(name string, valuep *time.Duration) Field {
-	if valuep == nil {
-		return nullField(name)
+func Durationp(key string, valp *time.Duration) Field {
+	if valp == nil {
+		return nullField(key)
 	}
-	return Duration(name, *valuep)
+	return Duration(key, *valp)
 }
 
 //------------------------------ 切片类型转换 ------------------------------//
 
 // Times 格式化[]time.Time类型字段信息
-func Times(name string, values []time.Time, format ...string) Field {
+func Times(key string, vals []time.Time, format ...string) Field {
 	var timeFmt string
 	if len(format) > 0 {
 		timeFmt = format[0]
 	}
-	return Field{Key: name, ValType: TypeTimes, Interface: values, String: timeFmt}
+	return Field{Key: key, Type: TypeTimes, Interface: vals, String: timeFmt}
 }
 
 // Durations 格式化[]time.Duration类型字段信息
-func Durations(name string, values []time.Duration) Field {
-	return Field{Key: name, ValType: TypeDurations, Interface: values}
+func Durations(key string, vals []time.Duration) Field {
+	return Field{Key: key, Type: TypeDurations, Interface: vals}
 }

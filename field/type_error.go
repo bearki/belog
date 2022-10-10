@@ -3,26 +3,26 @@ package field
 //------------------------------ 值类型转换 ------------------------------//
 
 // Error 格式化error类型字段信息
-func Error(name string, value error) Field {
-	if value == nil {
-		return nullField(name)
+func Error(key string, val error) Field {
+	if val == nil {
+		return nullField(key)
 	}
-	return Field{Key: name, ValType: TypeError, String: value.Error()}
+	return Field{Key: key, Type: TypeError, String: val.Error()}
 }
 
 //------------------------------ 指针类型转换 ------------------------------//
 
 // Errorp 格式化*error类型字段信息
-func Errorp(name string, valuep *error) Field {
-	if valuep == nil {
-		return nullField(name)
+func Errorp(key string, valp *error) Field {
+	if valp == nil {
+		return nullField(key)
 	}
-	return Error(name, *valuep)
+	return Error(key, *valp)
 }
 
 //------------------------------ 切片类型转换 ------------------------------//
 
 // Errors 格式化[]error类型字段信息
-func Errors(name string, values []error) Field {
-	return Field{Key: name, ValType: TypeErrors, Interface: values}
+func Errors(key string, vals []error) Field {
+	return Field{Key: key, Type: TypeErrors, Interface: vals}
 }

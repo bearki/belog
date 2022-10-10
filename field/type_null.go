@@ -9,7 +9,7 @@ package field
 
 // 创建null值字段
 //
-// @params name 字段名称
-func nullField(name string) Field {
-	return Field{Key: name, ValType: TypeNull, String: "null"}
+// @params key 字段名称
+func nullField(key string) Field {
+	return Field{Key: key, Type: TypeNull, String: "null"}
 }

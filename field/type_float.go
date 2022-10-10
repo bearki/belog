@@ -16,41 +16,41 @@ import (
 //------------------------------ 值类型转换 ------------------------------//
 
 // Float32 格式化float32类型字段信息
-func Float32(name string, value float32) Field {
-	return Field{Key: name, ValType: TypeFloat32, Integer: int64(math.Float32bits(value))}
+func Float32(key string, val float32) Field {
+	return Field{Key: key, Type: TypeFloat32, Integer: int64(math.Float32bits(val))}
 }
 
 // Float64 格式化float64类型字段信息
-func Float64(name string, value float64) Field {
-	return Field{Key: name, ValType: TypeFloat64, Integer: int64(math.Float64bits(value))}
+func Float64(key string, val float64) Field {
+	return Field{Key: key, Type: TypeFloat64, Integer: int64(math.Float64bits(val))}
 }
 
 //------------------------------ 指针类型转换 ------------------------------//
 
 // Float32p 格式化*float32类型字段信息
-func Float32p(name string, valuep *float32) Field {
-	if valuep == nil {
-		return nullField(name)
+func Float32p(key string, valp *float32) Field {
+	if valp == nil {
+		return nullField(key)
 	}
-	return Float32(name, *valuep)
+	return Float32(key, *valp)
 }
 
 // Float64p 格式化*float64类型字段信息
-func Float64p(name string, valuep *float64) Field {
-	if valuep == nil {
-		return nullField(name)
+func Float64p(key string, valp *float64) Field {
+	if valp == nil {
+		return nullField(key)
 	}
-	return Float64(name, *valuep)
+	return Float64(key, *valp)
 }
 
 //------------------------------ 切片类型转换 ------------------------------//
 
 // Float32s 格式化[]float32类型字段信息
-func Float32s(name string, values []float32) Field {
-	return Field{Key: name, ValType: TypeFloat32s, Interface: values}
+func Float32s(key string, vals []float32) Field {
+	return Field{Key: key, Type: TypeFloat32s, Interface: vals}
 }
 
 // Float64s 格式化[]float64类型字段信息
-func Float64s(name string, values []float64) Field {
-	return Field{Key: name, ValType: TypeFloat64s, Interface: values}
+func Float64s(key string, vals []float64) Field {
+	return Field{Key: key, Type: TypeFloat64s, Interface: vals}
 }

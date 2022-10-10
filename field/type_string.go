@@ -11,23 +11,23 @@ package field
 //------------------------------ 值类型转换 ------------------------------//
 
 // String 格式化string类型字段信息
-func String(name string, value string) Field {
-	return Field{Key: name, ValType: TypeString, String: value}
+func String(key string, val string) Field {
+	return Field{Key: key, Type: TypeString, String: val}
 }
 
 //------------------------------ 指针类型转换 ------------------------------//
 
 // Boolp 格式化*string类型字段信息
-func Stringp(name string, valuep *string) Field {
-	if valuep == nil {
-		return nullField(name)
+func Stringp(key string, valp *string) Field {
+	if valp == nil {
+		return nullField(key)
 	}
-	return String(name, *valuep)
+	return String(key, *valp)
 }
 
 //------------------------------ 切片类型转换 ------------------------------//
 
 // Strings 格式化[]string类型字段信息
-func Strings(name string, values []string) Field {
-	return Field{Key: name, ValType: TypeStrings, Interface: values}
+func Strings(key string, vals []string) Field {
+	return Field{Key: key, Type: TypeStrings, Interface: vals}
 }
