@@ -16,7 +16,7 @@ func appendFieldValue(isJson bool, dst []byte, val field.Field) []byte {
 	// Type == time，使用字段为Integer
 	case field.TypeTime:
 		// 微秒时间戳
-		dst = appendTime(isJson, dst, convert.TimeFromInt64(val.Integer), val.String)
+		dst = appendTimeValue(isJson, dst, convert.TimeFromInt64(val.Integer), val.String)
 
 	// Type == ~intn，使用字段为Integer
 	case field.TypeInt8, field.TypeInt16, field.TypeInt, field.TypeInt32, field.TypeInt64, field.TypeDuration:
@@ -403,7 +403,7 @@ func appendField(isJson bool, dst []byte, val field.Field) []byte {
 	return dst
 }
 
-// AppendFieldAndMsg 将字段拼接为行格式
+// appendFieldAndMsg 将字段拼接为行格式
 //
 // @params dst 目标切片
 //
@@ -415,7 +415,7 @@ func appendField(isJson bool, dst []byte, val field.Field) []byte {
 //
 // 返回示例，反引号内为实际内容:
 // `k1: v1, k2: v2, ..., message`
-func AppendFieldAndMsg(dst []byte, message string, val ...field.Field) []byte {
+func appendFieldAndMsg(dst []byte, message string, val ...field.Field) []byte {
 	// 遍历所有字段
 	for _, v := range val {
 		// 追加字段并序列化
@@ -431,7 +431,7 @@ func AppendFieldAndMsg(dst []byte, message string, val ...field.Field) []byte {
 	return dst
 }
 
-// AppendFieldAndMsgJSON 将字段拼接为json格式
+// appendFieldAndMsgJSON 将字段拼接为json格式
 //
 // @params dst 目标切片
 //
@@ -447,7 +447,7 @@ func AppendFieldAndMsg(dst []byte, message string, val ...field.Field) []byte {
 //
 // 返回示例，反引号内为实际内容:
 // `"fields": {"k1": "v1", ...}, "msg": "message"`
-func AppendFieldAndMsgJSON(dst []byte, messageKey string, message string, fieldsKey string, val ...field.Field) []byte {
+func appendFieldAndMsgJSON(dst []byte, messageKey string, message string, fieldsKey string, val ...field.Field) []byte {
 	// 追加字段集字段
 	dst = append(dst, '"')
 	dst = append(dst, fieldsKey...)

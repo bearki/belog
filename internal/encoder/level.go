@@ -4,7 +4,7 @@ import (
 	"github.com/bearki/belog/v2/level"
 )
 
-// AppendLevel 追加行格式的日志级别
+// appendLevel 追加行格式的日志级别
 //
 // @params dst 目标切片
 //
@@ -16,7 +16,7 @@ import (
 //
 // 返回示例，反引号内为实际内容:
 // `[T]`
-func AppendLevel(dst []byte, l level.Level, useFullString bool) []byte {
+func appendLevel(dst []byte, l level.Level, useFullString bool) []byte {
 	dst = append(dst, '[')
 	if useFullString {
 		dst = append(dst, l.String()...)
@@ -27,7 +27,7 @@ func AppendLevel(dst []byte, l level.Level, useFullString bool) []byte {
 	return dst
 }
 
-// AppendLevelJSON 追加行格式的日志级别
+// appendLevelJSON 追加行格式的日志级别
 //
 // @params dst 目标切片
 //
@@ -41,7 +41,7 @@ func AppendLevel(dst []byte, l level.Level, useFullString bool) []byte {
 //
 // 返回示例，反引号内为实际内容:
 // `"level": "T"`
-func AppendLevelJSON(dst []byte, levelKey string, l level.Level, useFullString bool) []byte {
+func appendLevelJSON(dst []byte, levelKey string, l level.Level, useFullString bool) []byte {
 	dst = append(dst, '"')
 	dst = append(dst, levelKey...)
 	dst = append(dst, '"', ':', ' ', '"')

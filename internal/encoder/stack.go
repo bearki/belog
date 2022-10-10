@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// GetCallStack 获取调用栈信息
+// getCallStack 获取调用栈信息
 //
 // @params skip 需要跳过的调用栈数量
 //
@@ -15,7 +15,7 @@ import (
 // @return ln 行号
 //
 // @return mn 函数名
-func GetCallStack(skip uint) (fn string, ln int, mn string) {
+func getCallStack(skip uint) (fn string, ln int, mn string) {
 	// 获取调用栈信息
 	pc, fn, ln, _ := runtime.Caller(int(skip))
 
@@ -28,7 +28,7 @@ func GetCallStack(skip uint) (fn string, ln int, mn string) {
 	return
 }
 
-// AppendStack 追加行格式的调用栈
+// appendStack 追加行格式的调用栈
 //
 // @params dst 目标切片
 //
@@ -44,7 +44,7 @@ func GetCallStack(skip uint) (fn string, ln int, mn string) {
 //
 // 返回示例，反引号内为实际内容:
 // `[test.go:100] [test.TestLogger]`
-func AppendStack(dst []byte, fullPath bool, fn string, ln int, mn string) []byte {
+func appendStack(dst []byte, fullPath bool, fn string, ln int, mn string) []byte {
 	if !fullPath {
 		// 裁剪为基础文件名
 		index := strings.LastIndexByte(fn, '/')
@@ -72,7 +72,7 @@ func AppendStack(dst []byte, fullPath bool, fn string, ln int, mn string) []byte
 	return dst
 }
 
-// AppendStackJSON 追加JSON格式的调用栈
+// appendStackJSON 追加JSON格式的调用栈
 //
 // @params dst 目标切片
 //
@@ -96,7 +96,7 @@ func AppendStack(dst []byte, fullPath bool, fn string, ln int, mn string) []byte
 //
 // 返回示例，反引号内为实际内容:
 // `"stack": {"file": "test.go", "line": 100, "method": "test.TestLogger"}`
-func AppendStackJSON(dst []byte, fullPath bool, stackKey string, fnKey string, fn string, lnKey string, ln int, mnKey string, mn string) []byte {
+func appendStackJSON(dst []byte, fullPath bool, stackKey string, fnKey string, fn string, lnKey string, ln int, mnKey string, mn string) []byte {
 	if !fullPath {
 		// 裁剪为基础文件名
 		index := strings.LastIndexByte(fn, '/')

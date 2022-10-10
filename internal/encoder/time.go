@@ -22,7 +22,7 @@ const (
 )
 
 // 追加时间值
-func appendTime(isJson bool, dst []byte, t time.Time, format string) []byte {
+func appendTimeValue(isJson bool, dst []byte, t time.Time, format string) []byte {
 	// 赋值默认格式
 	if len(format) == 0 {
 		format = TimeFormat1
@@ -56,7 +56,7 @@ func appendTime(isJson bool, dst []byte, t time.Time, format string) []byte {
 	}
 }
 
-// AppendTime 追加行格式的时间
+// appendTime 追加行格式的时间
 //
 // @params dst 目标切片
 //
@@ -70,12 +70,12 @@ func appendTime(isJson bool, dst []byte, t time.Time, format string) []byte {
 //
 // 返回示例，反引号内为实际内容:
 // `2006/01/02 15:04:05.000`
-func AppendTime(dst []byte, t time.Time, format string) []byte {
+func appendTime(dst []byte, t time.Time, format string) []byte {
 	// 追加时间值
-	return appendTime(false, dst, t, format)
+	return appendTimeValue(false, dst, t, format)
 }
 
-// AppendTimeJSON 追加JSON格式的时间
+// appendTimeJSON 追加JSON格式的时间
 //
 // @params dst 目标切片
 //
@@ -89,12 +89,12 @@ func AppendTime(dst []byte, t time.Time, format string) []byte {
 //
 // 返回示例，反引号内为实际内容:
 // `"time": "2006/01/02 15:04:05.000"` || `"time": 123456789000`
-func AppendTimeJSON(dst []byte, key string, t time.Time, format string) []byte {
+func appendTimeJSON(dst []byte, key string, t time.Time, format string) []byte {
 	// 拼接键名
 	dst = append(dst, '"')
 	dst = append(dst, key...)
 	dst = append(dst, `": `...)
 
 	// 追加时间值
-	return appendTime(true, dst, t, format)
+	return appendTimeValue(true, dst, t, format)
 }

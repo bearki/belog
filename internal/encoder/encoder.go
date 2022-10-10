@@ -33,17 +33,17 @@ type Option struct {
 // EncodeNormal 追加普通格式日志
 func (opt *Option) EncodeNormal(dst []byte, t time.Time, l level.Level, m string, val ...field.Field) []byte {
 	// 开始追加内容
-	dst = AppendTime(dst, t, opt.TimeFormat)
+	dst = appendTime(dst, t, opt.TimeFormat)
 	dst = append(dst, ' ')
-	dst = AppendLevel(dst, l, opt.LevelFormat)
+	dst = appendLevel(dst, l, opt.LevelFormat)
 	// 是否追加调用栈
 	if opt.StackSkip > 0 {
-		opt.StackFile, opt.StackLineNo, opt.StackMethod = GetCallStack(opt.StackSkip)
+		opt.StackFile, opt.StackLineNo, opt.StackMethod = getCallStack(opt.StackSkip)
 		dst = append(dst, ' ')
-		dst = AppendStack(dst, opt.StackFileFormat, opt.StackFile, opt.StackLineNo, opt.StackMethod)
+		dst = appendStack(dst, opt.StackFileFormat, opt.StackFile, opt.StackLineNo, opt.StackMethod)
 	}
 	dst = append(dst, ' ', ' ')
-	dst = AppendFieldAndMsg(dst, m, val...)
+	dst = appendFieldAndMsg(dst, m, val...)
 	dst = append(dst, "\r\n"...)
 	// 追加完成
 	return dst
@@ -53,14 +53,14 @@ func (opt *Option) EncodeNormal(dst []byte, t time.Time, l level.Level, m string
 func (opt *Option) EncodeJSON(dst []byte, t time.Time, l level.Level, m string, val ...field.Field) []byte {
 	// 开始追加内容
 	dst = append(dst, '{')
-	dst = AppendTimeJSON(dst, opt.TimeKey, t, opt.TimeFormat)
+	dst = appendTimeJSON(dst, opt.TimeKey, t, opt.TimeFormat)
 	dst = append(dst, `, `...)
-	dst = AppendLevelJSON(dst, opt.LevelKey, l, opt.LevelFormat)
+	dst = appendLevelJSON(dst, opt.LevelKey, l, opt.LevelFormat)
 	dst = append(dst, `, `...)
 	// 是否追加调用栈
 	if opt.StackSkip > 0 {
-		opt.StackFile, opt.StackLineNo, opt.StackMethod = GetCallStack(opt.StackSkip)
-		dst = AppendStackJSON(
+		opt.StackFile, opt.StackLineNo, opt.StackMethod = getCallStack(opt.StackSkip)
+		dst = appendStackJSON(
 			dst, opt.StackFileFormat, opt.StackKey,
 			opt.StackFileKey, opt.StackFile,
 			opt.StackLineNoKey, opt.StackLineNo,
@@ -68,7 +68,7 @@ func (opt *Option) EncodeJSON(dst []byte, t time.Time, l level.Level, m string, 
 		)
 		dst = append(dst, `, `...)
 	}
-	dst = AppendFieldAndMsgJSON(dst, opt.MsgKey, m, opt.FieldsKey, val...)
+	dst = appendFieldAndMsgJSON(dst, opt.MsgKey, m, opt.FieldsKey, val...)
 	dst = append(dst, "}\r\n"...)
 	// 追加完成
 	return dst

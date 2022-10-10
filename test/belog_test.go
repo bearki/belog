@@ -55,7 +55,9 @@ func BenchmarkBelogLoggerFileWrite(b *testing.B) {
 		b.Fatalf("file adapter create failed, %s\r\n", err)
 	}
 	// 初始化一个实例(可实例化任意适配器)
-	l, err := belog.New(logger.Option{}, fileAdapter)
+	l, err := belog.New(logger.Option{
+		DisabledJsonFormat: false,
+	}, fileAdapter)
 	if err != nil {
 		b.Fatalf("belog logger create failed, %s\r\n", err)
 	}
