@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bearki/belog/v2"
+	"github.com/bearki/belog/v2/adapter/discard"
 	"github.com/bearki/belog/v2/adapter/file"
 	"github.com/bearki/belog/v2/field"
 	"github.com/bearki/belog/v2/logger"
@@ -82,13 +83,14 @@ func BenchmarkBelogLoggerFileWrite(b *testing.B) {
 
 // BenchmarkBelogLoggerFormat 测试belog标准记录器序列化
 func BenchmarkBelogLoggerFormat(b *testing.B) {
-	// fa, _ := file.New(file.Options{
-	// 	LogPath:  "logs/app.log",
-	// 	MaxSize:  20,
-	// 	MaxLines: 10000000000,
-	// })
 	// 初始化一个实例(无适配器)
-	l, err := belog.New(logger.DefaultOption)
+	l, err := belog.New(
+		logger.Option{
+			DisabledJsonFormat: true,
+			TimeFormat:         logger.TimeFormat1,
+		},
+		discard.New(),
+	)
 	if err != nil {
 		fmt.Printf("belog logger create failed, %s\r\n", err)
 		return

@@ -378,7 +378,7 @@ func appendField(isJson bool, dst []byte, val field.Field) []byte {
 	} else {
 		// 追加键名
 		dst = append(dst, val.Key...)
-		dst = append(dst, `: `...)
+		dst = append(dst, `:`...)
 	}
 
 	switch true {

@@ -2,6 +2,22 @@ package logger
 
 import "github.com/bearki/belog/v2/internal/encoder"
 
+// 暴露时间格式
+const (
+	TimeFormat1         = encoder.TimeFormat1
+	TimeFormat2         = encoder.TimeFormat2
+	TimeFormat3         = encoder.TimeFormat3
+	TimeFormat4         = encoder.TimeFormat4
+	TimeFormat5         = encoder.TimeFormat5
+	TimeFormat6         = encoder.TimeFormat6
+	TimeFormat7         = encoder.TimeFormat7
+	TimeFormat8         = encoder.TimeFormat8
+	TimeFormatUnix      = encoder.TimeFormatUnix
+	TimeFormatUnixMilli = encoder.TimeFormatUnixMilli
+	TimeFormatUnixMicro = encoder.TimeFormatUnixMicro
+	TimeFormatUnixNano  = encoder.TimeFormatUnixNano
+)
+
 const (
 	// 需要跳过的最少调用栈层数
 	//
@@ -28,14 +44,14 @@ type Option struct {
 
 	// 时间序列化格式
 	//
-	// 支持time.Format的所有格式
+	// 支持time.Format的所有格式和以下内置格式
 	//
-	// Unix 秒级时间戳,
-	// UnixMilli 毫秒级时间戳,
-	// UnixMicro 微秒级时间戳,
-	// UnixNano 纳秒级时间戳
+	// Unix(秒级时间戳),
+	// UnixMilli(毫秒级时间戳),
+	// UnixMicro(微秒级时间戳),
+	// UnixNano(纳秒级时间戳)
 	//
-	// Default: 2006/01/02 15:04:05.000
+	// Default: UnixMilli
 	TimeFormat string
 
 	// 日志级别输出格式
@@ -89,7 +105,7 @@ type Option struct {
 
 // 默认的参数配置
 var defaultOption = Option{
-	TimeFormat:         encoder.TimeFormatUnixMicro,
+	TimeFormat:         TimeFormatUnixMilli,
 	TimeJsonKey:        "time",
 	LevelJsonKey:       "level",
 	StackJsonKey:       "stack",
