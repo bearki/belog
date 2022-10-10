@@ -32,10 +32,13 @@ type Option struct {
 	// Default: false
 	PrintCallStack bool
 
-	// 是否输出调用栈完整路径
+	// 调用栈文件路径格式
+	//
+	// true: 使用完整路径
+	// false: 使用Base文件名
 	//
 	// Default: false
-	CallStackFullPath bool
+	StackFileFormat bool
 
 	// 是否禁用JSON序列化输出
 	//

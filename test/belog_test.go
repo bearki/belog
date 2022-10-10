@@ -86,10 +86,7 @@ func BenchmarkBelogLoggerFileWrite(b *testing.B) {
 func BenchmarkBelogLoggerFormat(b *testing.B) {
 	// 初始化一个实例(无适配器)
 	l, err := belog.New(
-		logger.Option{
-			DisabledJsonFormat: true,
-			TimeFormat:         logger.TimeFormat1,
-		},
+		logger.Option{},
 		discard.New(),
 	)
 	if err != nil {

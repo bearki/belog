@@ -20,82 +20,50 @@ type StandardBelog struct {
 	*belog
 }
 
-// format 序列化为行格式
-//
-// 2022/09/14 20:28:13.793 [T]  k1: v1, k2: v2, ..., this is test msg\r\n
+// format 序列化格式
 func (s *StandardBelog) format(t time.Time, l level.Level, msg string, val ...field.Field) {
 	// 从对象池中获取一个日志字节流对象
-	c := logBytesPool.Get()
+	dst := logBytesPool.Get()
 
-	// 声明空栈信息
-	var (
-		fn string
-		ln int
-		mn string
-	)
-
-	// 开始追加内容
-	c = encoder.AppendTime(c, t, s.timeFormat)
-	c = append(c, ' ')
-	c = encoder.AppendLevel(c, l, s.levelFormat)
-	if s.printCallStack {
-		fn, ln, mn = encoder.GetCallStack(s.stackSkip)
-		c = append(c, ' ')
-		c = encoder.AppendStack(c, s.callStackFullPath, fn, ln, mn)
+	// 构建拼接参数
+	opt := &encoder.Option{
+		TimeKey:     s.timeJsonKey,
+		TimeFormat:  s.timeFormat,
+		LevelKey:    s.levelJsonKey,
+		LevelFormat: s.levelFormat,
+		MsgKey:      s.messageJsonKey,
+		FieldsKey:   s.fieldsJsonKey,
 	}
-	c = append(c, ' ', ' ')
-	c = encoder.AppendFieldAndMsg(c, msg, val...)
-	c = append(c, "\r\n"...)
+
+	// 是否打印调用栈
+	if s.printCallStack {
+		opt.StackSkip = s.stackSkip
+		opt.StackKey = s.stackJsonKey
+		opt.StackFileKey = s.stackFileJsonKey
+		opt.StackFileFormat = s.stackFileFormat
+		opt.StackLineNoKey = s.stackLineNoJsonKey
+		opt.StackMethodKey = s.stackMethodJsonKey
+		opt.StackFile = ""
+		opt.StackLineNo = 0
+		opt.StackMethod = ""
+	}
+
+	// 是否禁用JSON编码
+	if s.disabledJsonFormat {
+		// 执行日志普通编码
+		dst = opt.EncodeNormal(dst, t, l, msg, val...)
+	} else {
+		// 执行日志JSON编码
+		dst = opt.EncodeJSON(dst, t, l, msg, val...)
+	}
 
 	// 选择合适的适配器执行输出
 	adapterPrint := s.filterAdapterPrint()
-	adapterPrint(t, l, c, fn, ln, mn)
+	adapterPrint(t, l, dst, opt.StackFile, opt.StackLineNo, opt.StackMethod)
 
 	// 避免使用defer，会有些许性能损耗
 	// 回收切片
-	logBytesPool.Put(c)
-}
-
-// formatJSON 序列化为JSON格式
-//
-// {"$(timeKey)": "$(2006/01/02 15:04:05.000)", "$(levelKey)": "D", "$(fieldsKey)": {$("k1": v1, "k2": "v2", ...)}, "$(msgKey)": "this is test msg"}\r\n
-func (s *StandardBelog) formatJSON(t time.Time, l level.Level, msg string, val ...field.Field) {
-	// 从对象池中获取一个日志字节流对象
-	c := logBytesPool.Get()
-
-	// 声明空栈信息
-	var (
-		fn string
-		ln int
-		mn string
-	)
-
-	// 开始追加内容
-	c = append(c, '{')
-	c = encoder.AppendTimeJSON(c, s.timeJsonKey, t, s.timeFormat)
-	c = append(c, `, `...)
-	c = encoder.AppendLevelJSON(c, s.levelJsonKey, l, s.levelFormat)
-	c = append(c, `, `...)
-	if s.printCallStack {
-		fn, ln, mn = encoder.GetCallStack(s.stackSkip)
-		c = encoder.AppendStackJSON(
-			c, s.callStackFullPath, s.stackJsonKey,
-			s.stackFileJsonKey, fn,
-			s.stackLineNoJsonKey, ln,
-			s.stackMethodJsonKey, mn,
-		)
-		c = append(c, `, `...)
-	}
-	c = encoder.AppendFieldAndMsgJSON(c, s.messageJsonKey, msg, s.fieldsJsonKey, val...)
-	c = append(c, "}\r\n"...)
-
-	// 选择合适的适配器执行输出
-	adapterPrint := s.filterAdapterPrint()
-	adapterPrint(t, l, c, fn, ln, mn)
-
-	// 避免使用defer，会有些许性能损耗
-	// 回收切片
-	logBytesPool.Put(c)
+	logBytesPool.Put(dst)
 }
 
 // check 高性能日志前置判断和序列化
@@ -108,15 +76,8 @@ func (s *StandardBelog) check(l level.Level, msg string, val ...field.Field) {
 
 	// 获取当前时间
 	now := time.Now()
-
-	// 是否禁用json序列化格式输出
-	if s.disabledJsonFormat {
-		// 执行行格式打印
-		s.format(now, l, msg, val...)
-	} else {
-		// 执行JSON格式打印
-		s.formatJSON(now, l, msg, val...)
-	}
+	// 执行格式化打印
+	s.format(now, l, msg, val...)
 }
 
 // Trace 通知级别的日志（高性能序列化）

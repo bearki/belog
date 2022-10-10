@@ -10,8 +10,6 @@ import (
 
 // BenchmarkZapLoggerFormat 测试zap标准记录器序列化
 func BenchmarkZapLoggerFormat(b *testing.B) {
-	b.ReportAllocs()
-	b.StopTimer()
 	cfg := zap.NewProductionConfig()
 	core := zapcore.NewCore(
 		zapcore.NewJSONEncoder(cfg.EncoderConfig),

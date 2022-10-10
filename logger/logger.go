@@ -39,7 +39,7 @@ type belog struct {
 
 	stackSkip          uint // 需要跳过的调用栈层数
 	printCallStack     bool // 是否打印调用栈
-	callStackFullPath  bool // 是否输出调用栈完整路径
+	stackFileFormat    bool // 是否输出调用栈文件名完整路径
 	disabledJsonFormat bool // 是否禁用JSON序列化输出
 
 	//
@@ -76,8 +76,8 @@ func New(option Option, adapter ...Adapter) (Logger, error) {
 	bl := &belog{
 		stackSkip:          stackBaseSkip, // 初始为默认最小跳过层数
 		levelMap:           nil,
-		printCallStack:     option.PrintCallStack || option.CallStackFullPath,
-		callStackFullPath:  option.CallStackFullPath,
+		printCallStack:     option.PrintCallStack || option.StackFileFormat,
+		stackFileFormat:    option.StackFileFormat,
 		disabledJsonFormat: option.DisabledJsonFormat,
 		timeFormat:         option.TimeFormat,
 		levelFormat:        option.LevelFormat,
