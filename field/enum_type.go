@@ -4,8 +4,11 @@ package field
 type Type uint8
 
 const (
+	// 未知类型
+	TypeUnknown Type = iota
+
 	/*---------------------- 普通类型开始 ----------------------*/
-	NormalTypeStart Type = iota
+	NormalTypeStart
 
 	// 时间类型
 	TypeTime

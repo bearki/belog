@@ -1,6 +1,8 @@
 package encoder
 
 import (
+	"encoding/json"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -396,6 +398,16 @@ func appendField(isJson bool, dst []byte, val field.Field) []byte {
 		dst = appendFieldValues(isJson, dst, val)
 		// 在值的后面追加中括号
 		dst = append(dst, ']')
+
+	// 未知类型，走反射
+	default:
+		// 是否为JSON格式
+		if isJson {
+			tmp, _ := json.Marshal(val.Interface)
+			dst = append(dst, tmp...)
+		} else {
+			dst = append(dst, fmt.Sprintf("%+v", val.Interface)...)
+		}
 
 	}
 

@@ -81,6 +81,7 @@ func BenchmarkBelogLoggerFileWrite(b *testing.B) {
 			field.Bool("key0", i%2 == 0),
 			field.Int8("key1", 1),
 			field.Ints("int10", []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0}),
+			field.Interface("any", map[string]int{"1": 1, "2": 2, "3": 3}),
 		)
 	}
 }
