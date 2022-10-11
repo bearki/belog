@@ -8,6 +8,8 @@
 package logger
 
 import (
+	"fmt"
+
 	"github.com/bearki/belog/v2/level"
 )
 
@@ -18,6 +20,7 @@ type SugarBelog struct {
 
 // check 常规日志前置判断和序列化
 func (s *SugarBelog) check(l level.Level, msg string, val ...interface{}) {
+	fmt.Println("SugarBelog Unrealized")
 	// // 判断当前级别日志是否需要记录
 	// if !s.levelIsExist(l) {
 	// 	// 当前级别日志不需要记录
