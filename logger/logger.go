@@ -50,8 +50,8 @@ type belog struct {
 	// 功能配置
 	//
 
-	stackSkip      uint // 需要跳过的调用栈层数
-	printCallStack bool // 是否打印调用栈
+	stackSkip         uint // 需要跳过的调用栈层数
+	enabledStackPrint bool // 是否打印调用栈
 }
 
 // New 初始化一个日志记录器实例
@@ -65,10 +65,10 @@ func New(option Option, adapter ...Adapter) (Logger, error) {
 
 	// 初始化日志记录器对象
 	bl := &belog{
-		encoder:        option.Encoder, // 初始化编码器
-		stackSkip:      stackBaseSkip,  // 初始为默认最小跳过层数
-		levelMap:       nil,
-		printCallStack: option.PrintCallStack,
+		encoder:           option.Encoder, // 初始化编码器
+		stackSkip:         stackBaseSkip,  // 初始为默认最小跳过层数
+		levelMap:          nil,
+		enabledStackPrint: option.EnabledStackPrint,
 	}
 
 	// 默认开启全部级别的日志记录

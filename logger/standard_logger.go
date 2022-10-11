@@ -26,7 +26,7 @@ func (s *StandardBelog) format(t time.Time, l level.Level, msg string, val ...fi
 	dst := logBytesPool.Get()
 
 	// 是否需要调用栈
-	if s.printCallStack {
+	if s.enabledStackPrint {
 		fn, ln, mn := encoder.GetCallStack(s.stackSkip)
 		dst = s.encoder.EncodeStack(dst, t, l, fn, ln, mn, msg, val...)
 		s.adapterPrintStack(t, l, dst, fn, ln, mn)

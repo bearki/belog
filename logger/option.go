@@ -5,7 +5,7 @@ type Option struct {
 	// 是否记录调用栈
 	//
 	// Default: false
-	PrintCallStack bool
+	EnabledStackPrint bool
 
 	// Encoder 日志内容编码器
 	Encoder Encoder
@@ -13,8 +13,8 @@ type Option struct {
 
 // 默认的参数配置
 var defaultOption = Option{
-	PrintCallStack: false,
-	Encoder:        NewJsonEncoder(DefaultJsonOption),
+	EnabledStackPrint: false,
+	Encoder:           NewJsonEncoder(DefaultJsonOption),
 }
 
 // DefaultOption 默认配置

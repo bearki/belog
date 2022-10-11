@@ -57,7 +57,7 @@ func BenchmarkBelogLoggerFileWrite(b *testing.B) {
 
 	// 初始化一个实例(可实例化任意适配器)
 	l, err := belog.New(logger.Option{
-		PrintCallStack: true,
+		EnabledStackPrint: true,
 	}, fileAdapter)
 	if err != nil {
 		b.Fatalf("belog logger create failed, %s\r\n", err)
@@ -90,8 +90,8 @@ func BenchmarkBelogLoggerFileWrite(b *testing.B) {
 func BenchmarkBelogLoggerFormat(b *testing.B) {
 	// 初始化一个实例(无输出)
 	l, err := belog.New(logger.Option{
-		PrintCallStack: false,
-		Encoder:        logger.NewJsonEncoder(logger.DefaultJsonOption),
+		EnabledStackPrint: false,
+		Encoder:           logger.NewJsonEncoder(logger.DefaultJsonOption),
 	}, discard.New())
 	if err != nil {
 		fmt.Printf("belog logger create failed, %s\r\n", err)
