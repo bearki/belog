@@ -35,6 +35,7 @@ func BenchmarkZapLoggerFormat(b *testing.B) {
 			zap.Bool("key8", i%2 == 0),
 			zap.String("key9", "不是编号编号分别为发布会我"),
 			zap.Ints("int10", []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0}),
+			zap.Reflect("any", map[string]int{"1": 1, "2": 2, "3": 3}),
 		)
 	}
 }
