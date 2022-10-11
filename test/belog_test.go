@@ -54,17 +54,16 @@ func BenchmarkBelogLoggerFileWrite(b *testing.B) {
 	if err != nil {
 		b.Fatalf("file adapter create failed, %s\r\n", err)
 	}
+
 	// 初始化一个实例(可实例化任意适配器)
-	l, err := belog.New(logger.Option{
-		DisabledJsonFormat: false,
-	}, fileAdapter)
+	l, err := belog.New(logger.DefaultOption, fileAdapter)
 	if err != nil {
 		b.Fatalf("belog logger create failed, %s\r\n", err)
 	}
-	b.ReportAllocs()
-	defer l.Flush()
 
-	// l.PrintCallStack()
+	b.ReportAllocs()
+	b.ResetTimer()
+	defer l.Flush()
 
 	for i := 0; i < b.N; i++ {
 		l.Trace(
@@ -86,11 +85,8 @@ func BenchmarkBelogLoggerFileWrite(b *testing.B) {
 
 // BenchmarkBelogLoggerFormat 测试belog标准记录器序列化
 func BenchmarkBelogLoggerFormat(b *testing.B) {
-	// 初始化一个实例(无适配器)
-	l, err := belog.New(
-		logger.Option{},
-		discard.New(),
-	)
+	// 初始化一个实例(无输出)
+	l, err := belog.New(logger.DefaultOption, discard.New())
 	if err != nil {
 		fmt.Printf("belog logger create failed, %s\r\n", err)
 		return

@@ -25,41 +25,15 @@ func (s *StandardBelog) format(t time.Time, l level.Level, msg string, val ...fi
 	// 从对象池中获取一个日志字节流对象
 	dst := logBytesPool.Get()
 
-	// 构建拼接参数
-	opt := &encoder.Option{
-		TimeKey:     s.timeJsonKey,
-		TimeFormat:  s.timeFormat,
-		LevelKey:    s.levelJsonKey,
-		LevelFormat: s.levelFormat,
-		MsgKey:      s.messageJsonKey,
-		FieldsKey:   s.fieldsJsonKey,
-	}
-
-	// 是否打印调用栈
+	// 是否需要调用栈
 	if s.printCallStack {
-		opt.StackSkip = s.stackSkip
-		opt.StackKey = s.stackJsonKey
-		opt.StackFileKey = s.stackFileJsonKey
-		opt.StackFileFormat = s.stackFileFormat
-		opt.StackLineNoKey = s.stackLineNoJsonKey
-		opt.StackMethodKey = s.stackMethodJsonKey
-		opt.StackFile = ""
-		opt.StackLineNo = 0
-		opt.StackMethod = ""
-	}
-
-	// 是否禁用JSON编码
-	if s.disabledJsonFormat {
-		// 执行日志普通编码
-		dst = opt.EncodeNormal(dst, t, l, msg, val...)
+		fn, ln, mn := encoder.GetCallStack(s.stackSkip)
+		dst = s.encoder.EncodeStack(dst, t, l, fn, ln, mn, msg, val...)
+		s.adapterPrintStack(t, l, dst, fn, ln, mn)
 	} else {
-		// 执行日志JSON编码
-		dst = opt.EncodeJSON(dst, t, l, msg, val...)
+		dst = s.encoder.Encode(dst, t, l, msg, val...)
+		s.adapterPrint(t, l, dst)
 	}
-
-	// 选择合适的适配器执行输出
-	adapterPrint := s.filterAdapterPrint()
-	adapterPrint(t, l, dst, opt.StackFile, opt.StackLineNo, opt.StackMethod)
 
 	// 避免使用defer，会有些许性能损耗
 	// 回收切片
@@ -70,7 +44,11 @@ func (s *StandardBelog) format(t time.Time, l level.Level, msg string, val ...fi
 func (s *StandardBelog) check(l level.Level, msg string, val ...field.Field) {
 	// 判断当前级别日志是否需要记录
 	if !s.levelIsExist(l) {
-		// 当前级别日志不需要记录
+		return
+	}
+
+	// 编码器是否为空
+	if s.encoder == nil {
 		return
 	}
 

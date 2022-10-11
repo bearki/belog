@@ -17,6 +17,13 @@ import (
 	"github.com/bearki/belog/v2/level"
 )
 
+const (
+	// 需要跳过的最少调用栈层数
+	//
+	// 该值由belog内部自定义，外部无需关心
+	stackBaseSkip uint = 3
+)
+
 var (
 	// 日志字节流对象池
 	logBytesPool = pool.NewBytesPool(100, 0, 1024)
@@ -34,33 +41,17 @@ type belog struct {
 	adapters        map[string]Adapter       // 适配器缓存映射
 
 	//
+	// 编码器配置
+	//
+
+	encoder Encoder // 编码器
+
+	//
 	// 功能配置
 	//
 
-	stackSkip          uint // 需要跳过的调用栈层数
-	printCallStack     bool // 是否打印调用栈
-	stackFileFormat    bool // 是否输出调用栈文件名完整路径
-	disabledJsonFormat bool // 是否禁用JSON序列化输出
-
-	//
-	// 序列化格式配置
-	//
-
-	timeFormat  string // 时间序列化格式
-	levelFormat bool   // 日志级别输出格式
-
-	//
-	// JSON字段配置
-	//
-
-	timeJsonKey        string // 时间的JSON键名
-	levelJsonKey       string // 日志级别的JSON键名
-	stackJsonKey       string // 调用栈信息JSON键名
-	stackFileJsonKey   string // 调用栈文件名JSON键名
-	stackLineNoJsonKey string // 调用栈文件行号JSON键名
-	stackMethodJsonKey string // 调用栈函数名JSON键名
-	fieldsJsonKey      string // 字段集JSON键名
-	messageJsonKey     string // 日志消息JSON键名
+	stackSkip      uint // 需要跳过的调用栈层数
+	printCallStack bool // 是否打印调用栈
 }
 
 // New 初始化一个日志记录器实例
@@ -70,25 +61,14 @@ type belog struct {
 // @return 日志记录器实例
 func New(option Option, adapter ...Adapter) (Logger, error) {
 	// 获取有效参数
-	option = getValidOption(option)
+	option = checkOptionValid(option)
 
 	// 初始化日志记录器对象
 	bl := &belog{
-		stackSkip:          stackBaseSkip, // 初始为默认最小跳过层数
-		levelMap:           nil,
-		printCallStack:     option.PrintCallStack || option.StackFileFormat,
-		stackFileFormat:    option.StackFileFormat,
-		disabledJsonFormat: option.DisabledJsonFormat,
-		timeFormat:         option.TimeFormat,
-		levelFormat:        option.LevelFormat,
-		timeJsonKey:        option.TimeJsonKey,
-		levelJsonKey:       option.LevelJsonKey,
-		stackJsonKey:       option.StackJsonKey,
-		stackFileJsonKey:   option.StackFileJsonKey,
-		stackLineNoJsonKey: option.StackLineNoJsonKey,
-		stackMethodJsonKey: option.StackMethodJsonKey,
-		fieldsJsonKey:      option.FieldsJsonKey,
-		messageJsonKey:     option.MessageJsonKey,
+		encoder:        option.Encoder, // 初始化编码器
+		stackSkip:      stackBaseSkip,  // 初始为默认最小跳过层数
+		levelMap:       nil,
+		printCallStack: option.PrintCallStack,
 	}
 
 	// 默认开启全部级别的日志记录
@@ -96,9 +76,6 @@ func New(option Option, adapter ...Adapter) (Logger, error) {
 		level.Trace, level.Debug, level.Info,
 		level.Warn, level.Error, level.Fatal,
 	)
-
-	// 预初始化（time包首次Format很慢）
-	_ = time.Now().Format(bl.timeFormat)
 
 	// 初始化适配器
 	for _, v := range adapter {
@@ -149,10 +126,18 @@ func (b *belog) SetAdapter(adapter Adapter) error {
 func (b *belog) levelIsExist(l level.Level) bool {
 	// 加个读锁
 	b.levelMapRWMutex.RLock()
+
+	// 是否为空
+	if b.levelMap == nil {
+		return false
+	}
+
 	// 检查
 	_, ok := b.levelMap[l]
+
 	// 释放读锁
 	b.levelMapRWMutex.RUnlock()
+
 	// 返回结果
 	return ok
 }
@@ -207,36 +192,31 @@ func (b *belog) Flush() {
 	wg.Wait()
 }
 
-// adapterPrintFunc 适配器打印方法
-type adapterPrintFunc func(t time.Time, l level.Level, c []byte, fn string, ln int, mn string)
-
-// filterAdapterPrint 筛选合适的适配器
-func (b *belog) filterAdapterPrint() adapterPrintFunc {
+// adapterPrint 筛选合适的适配器
+func (b *belog) adapterPrint(t time.Time, l level.Level, c []byte) {
 	// 是否为单适配器输出
 	if len(b.adapters) <= 1 {
 		// 单适配器输出
-		return b.singleAdapterPrint
+		b.singleAdapterPrint(t, l, c)
+		return
 	}
 	// 多适配器并发输出
-	return b.multipleAdapterPrint
+	b.multipleAdapterPrint(t, l, c)
 }
 
 // singleAdapterPrint 单适配器输出
-func (b *belog) singleAdapterPrint(t time.Time, l level.Level, c []byte, fn string, ln int, mn string) {
+func (b *belog) singleAdapterPrint(t time.Time, l level.Level, c []byte) {
 	// 加个读锁
 	b.adaptersRWMutex.RLock()
 
-	// 是否需要输出调用栈
-	if b.printCallStack {
-		// 遍历所有适配器
-		for _, adapter := range b.adapters {
-			adapter.PrintStack(t, l, c, fn, ln, mn)
-		}
-	} else {
-		// 遍历所有适配器
-		for _, adapter := range b.adapters {
-			adapter.Print(t, l, c)
-		}
+	// 适配器是否为空
+	if b.adapters == nil {
+		return
+	}
+
+	// 遍历所有适配器
+	for _, adapter := range b.adapters {
+		adapter.Print(t, l, c)
 	}
 
 	// 释放读锁
@@ -244,32 +224,85 @@ func (b *belog) singleAdapterPrint(t time.Time, l level.Level, c []byte, fn stri
 }
 
 // multipleAdapterPrint 多适配器输出
-func (b *belog) multipleAdapterPrint(t time.Time, l level.Level, c []byte, fn string, ln int, mn string) {
+func (b *belog) multipleAdapterPrint(t time.Time, l level.Level, c []byte) {
 	// 加个读锁
 	b.adaptersRWMutex.RLock()
+
+	// 适配器是否为空
+	if b.adapters == nil {
+		return
+	}
 
 	// 协程等待分组（WaitGroup会增加1个开销）
 	var wg sync.WaitGroup
 
-	// 是否需要输出调用栈
-	if b.printCallStack {
-		// 遍历所有适配器
-		for _, adapter := range b.adapters {
-			wg.Add(1)
-			go func(a Adapter) {
-				defer wg.Done()
-				a.PrintStack(t, l, c, fn, ln, mn)
-			}(adapter)
-		}
-	} else {
-		// 遍历所有适配器
-		for _, adapter := range b.adapters {
-			wg.Add(1)
-			go func(a Adapter) {
-				defer wg.Done()
-				a.Print(t, l, c)
-			}(adapter)
-		}
+	// 遍历所有适配器
+	for _, adapter := range b.adapters {
+		wg.Add(1)
+		go func(a Adapter) {
+			defer wg.Done()
+			a.Print(t, l, c)
+		}(adapter)
+	}
+
+	// 等待所有适配器完成日志记录
+	wg.Wait()
+
+	// 释放读锁
+	b.adaptersRWMutex.RUnlock()
+}
+
+// filterAdapterPrint 筛选合适的调用栈适配器
+func (b *belog) adapterPrintStack(t time.Time, l level.Level, c []byte, fn string, ln int, mn string) {
+	// 是否为单适配器输出
+	if len(b.adapters) <= 1 {
+		// 单适配器输出
+		b.singleAdapterPrintStack(t, l, c, fn, ln, mn)
+		return
+	}
+	// 多适配器并发输出
+	b.multipleAdapterPrintStack(t, l, c, fn, ln, mn)
+}
+
+// singleAdapterPrintStack 单适配器输出调用栈
+func (b *belog) singleAdapterPrintStack(t time.Time, l level.Level, c []byte, fn string, ln int, mn string) {
+	// 加个读锁
+	b.adaptersRWMutex.RLock()
+
+	// 适配器是否为空
+	if b.adapters == nil {
+		return
+	}
+
+	// 遍历所有适配器
+	for _, adapter := range b.adapters {
+		adapter.PrintStack(t, l, c, fn, ln, mn)
+	}
+
+	// 释放读锁
+	b.adaptersRWMutex.RUnlock()
+}
+
+// multipleAdapterPrintStack 多适配器输出调用栈
+func (b *belog) multipleAdapterPrintStack(t time.Time, l level.Level, c []byte, fn string, ln int, mn string) {
+	// 加个读锁
+	b.adaptersRWMutex.RLock()
+
+	// 适配器是否为空
+	if b.adapters == nil {
+		return
+	}
+
+	// 协程等待分组（WaitGroup会增加1个开销）
+	var wg sync.WaitGroup
+
+	// 遍历所有适配器
+	for _, adapter := range b.adapters {
+		wg.Add(1)
+		go func(a Adapter) {
+			defer wg.Done()
+			a.PrintStack(t, l, c, fn, ln, mn)
+		}(adapter)
 	}
 
 	// 等待所有适配器完成日志记录

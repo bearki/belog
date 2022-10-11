@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// getCallStack 获取调用栈信息
+// GetCallStack 获取调用栈信息
 //
 // @params skip 需要跳过的调用栈数量
 //
@@ -15,7 +15,7 @@ import (
 // @return ln 行号
 //
 // @return mn 函数名
-func getCallStack(skip uint) (fn string, ln int, mn string) {
+func GetCallStack(skip uint) (fn string, ln int, mn string) {
 	// 获取调用栈信息
 	pc, fn, ln, _ := runtime.Caller(int(skip))
 
