@@ -56,7 +56,9 @@ func BenchmarkBelogLoggerFileWrite(b *testing.B) {
 	}
 
 	// 初始化一个实例(可实例化任意适配器)
-	l, err := belog.New(logger.DefaultOption, fileAdapter)
+	l, err := belog.New(logger.Option{
+		PrintCallStack: true,
+	}, fileAdapter)
 	if err != nil {
 		b.Fatalf("belog logger create failed, %s\r\n", err)
 	}
