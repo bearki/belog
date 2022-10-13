@@ -16,7 +16,9 @@ import (
 // DefaultLog 默认实例(控制台适配器记录日志)
 var DefaultLog, _ = logger.New(
 	logger.DefaultOption,
-	console.New(console.Option{}),
+	console.New(console.Option{
+		DisabledBuffer: true,
+	}),
 )
 
 func init() {
