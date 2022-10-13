@@ -116,18 +116,14 @@ func (e *Adapter) Print(_ time.Time, level level.Level, content []byte) {
 		)
 	}
 
-	// 是否禁用缓冲区
-	if e.disabledBuffer {
+	// 是否禁用缓冲区 或 缓冲器输出器为空
+	if e.disabledBuffer || e.write == nil {
 		_, _ = os.Stdout.Write(content)
+		return
 	}
 
 	// 使用缓冲区输出
-	if e.write != nil {
-		_, _ = e.write.Write(content)
-	} else {
-		os.Stdout.WriteString(e.Name() + " writer is nil pointer")
-		_, _ = os.Stdout.Write(content)
-	}
+	_, _ = e.write.Write(content)
 }
 
 // PrintStack 调用栈日志打印方法
@@ -165,18 +161,14 @@ func (e *Adapter) PrintStack(_ time.Time, level level.Level, content []byte, _ s
 		)
 	}
 
-	// 是否禁用缓冲区
-	if e.disabledBuffer {
+	// 是否禁用缓冲区 或 缓冲器输出器为空
+	if e.disabledBuffer || e.write == nil {
 		_, _ = os.Stdout.Write(content)
+		return
 	}
 
 	// 使用缓冲区输出
-	if e.write != nil {
-		_, _ = e.write.Write(content)
-	} else {
-		os.Stdout.WriteString(e.Name() + " writer is nil pointer")
-		_, _ = os.Stdout.Write(content)
-	}
+	_, _ = e.write.Write(content)
 }
 
 // Flush 日志缓存刷新
@@ -186,7 +178,5 @@ func (e *Adapter) PrintStack(_ time.Time, level level.Level, content []byte, _ s
 func (e *Adapter) Flush() {
 	if e.write != nil {
 		_ = e.write.Flush()
-	} else {
-		os.Stdout.WriteString(e.Name() + " writer is nil pointer")
 	}
 }
