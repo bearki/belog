@@ -152,10 +152,6 @@ func main() {
 	// 程序结束需要刷新缓冲区
 	defer l.Flush()
 
-	// 重置测试参数
-	b.ReportAllocs()
-	b.ResetTimer()
-
 	// 开始测试
 	for i := 0; i < b.N; i++ {
 		l.Trace(
