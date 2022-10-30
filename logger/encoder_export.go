@@ -21,6 +21,7 @@ const (
 // 导出编码器参数类型
 
 type (
+	EncoderBaseOption   = encoder.BaseOption          // 编码器基础参数类型
 	NormalEncoderOption = encoder.NormalEncoderOption // 普通编码器参数类型
 	JsonEncoderOption   = encoder.JsonEncoderOption   // JSON编码器参数类型
 )
