@@ -74,6 +74,31 @@ type JsonEncoder struct {
 func checkJsonOptionValid(opt JsonEncoderOption) JsonEncoderOption {
 	// 检查基础参数有效性
 	opt.BaseOption = checkBaseOptionValid(opt.BaseOption)
+	// 构建剩余参数默认值
+	if len(opt.TimeKey) == 0 {
+		opt.TimeKey = DefaultJsonOption.TimeKey
+	}
+	if len(opt.LevelKey) == 0 {
+		opt.LevelKey = DefaultJsonOption.LevelKey
+	}
+	if len(opt.MsgKey) == 0 {
+		opt.MsgKey = DefaultJsonOption.MsgKey
+	}
+	if len(opt.FieldsKey) == 0 {
+		opt.FieldsKey = DefaultJsonOption.FieldsKey
+	}
+	if len(opt.StackKey) == 0 {
+		opt.StackKey = DefaultJsonOption.StackKey
+	}
+	if len(opt.StackFileKey) == 0 {
+		opt.StackFileKey = DefaultJsonOption.StackFileKey
+	}
+	if len(opt.StackLineNoKey) == 0 {
+		opt.StackLineNoKey = DefaultJsonOption.StackLineNoKey
+	}
+	if len(opt.StackMethodKey) == 0 {
+		opt.StackMethodKey = DefaultJsonOption.StackMethodKey
+	}
 	// 检查完成
 	return opt
 }
