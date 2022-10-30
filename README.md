@@ -1,7 +1,7 @@
 # BeLog 高性能日志库（结构化日志）
 [![Go Version](https://img.shields.io/github/go-mod/go-version/bearki/belog)](https://go.dev/)
 [![Go Doc](https://pkg.go.dev/badge/github.com/bearki/belog/v2.svg)](https://pkg.go.dev/github.com/bearki/belog/v2)
-[![Latest Release](https://img.shields.io/github/v/release/bearki/belog)]()
+[![Latest Release](https://img.shields.io/github/v/release/bearki/belog)](https://github.com/bearki/belog/releases)
 
 这是一个高度解耦的日志框架，支持多适配器同时输出，你可以发挥自己的想象力，随意的创建自己喜爱的适配器；我们已经提供了几个简单的适配器实现，你会注意到它们都实现了 `logger` 中的 `Adapter` 接口，只要该接口的适配器均可挂载到 `logger` 中，你可以查看我们的适配器源码来编写自己的适配器。
 
