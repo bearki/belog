@@ -1,7 +1,6 @@
 package encoder
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -69,7 +68,10 @@ func appendFieldValue(isJson bool, dst []byte, val field.Field) []byte {
 		// 是否为JSON格式
 		if isJson {
 			dst = append(dst, '"')
-			dst = append(dst, strings.ReplaceAll(val.String, `"`, `\"`)...)
+			if strings.Contains(val.String, `"`) {
+				val.String = strings.ReplaceAll(val.String, `"`, `\"`)
+			}
+			dst = append(dst, val.String...)
 			dst = append(dst, '"')
 		} else {
 			dst = append(dst, val.String...)
@@ -470,7 +472,10 @@ func appendFieldAndMsgJSON(dst []byte, messageKey string, message string, fields
 	dst = append(dst, '"')
 	dst = append(dst, messageKey...)
 	dst = append(dst, `": "`...)
-	dst = append(dst, bytes.ReplaceAll(convert.StringToBytes(message), []byte(`"`), []byte(`\"`))...)
+	if strings.Contains(message, `"`) {
+		message = strings.ReplaceAll(message, `"`, `\"`)
+	}
+	dst = append(dst, convert.StringToBytes(message)...)
 	dst = append(dst, `", `...)
 
 	// 追加字段集字段
