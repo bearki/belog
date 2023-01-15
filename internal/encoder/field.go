@@ -1,9 +1,11 @@
 package encoder
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bearki/belog/v2/field"
@@ -67,7 +69,7 @@ func appendFieldValue(isJson bool, dst []byte, val field.Field) []byte {
 		// 是否为JSON格式
 		if isJson {
 			dst = append(dst, '"')
-			dst = append(dst, val.String...)
+			dst = append(dst, strings.ReplaceAll(val.String, `"`, `\"`)...)
 			dst = append(dst, '"')
 		} else {
 			dst = append(dst, val.String...)
@@ -428,16 +430,20 @@ func appendField(isJson bool, dst []byte, val field.Field) []byte {
 // 返回示例，反引号内为实际内容:
 // `k1: v1, k2: v2, ..., message`
 func appendFieldAndMsg(dst []byte, message string, val ...field.Field) []byte {
-	// 遍历所有字段
-	for _, v := range val {
-		// 追加字段并序列化
-		dst = appendField(false, dst, v)
-		// 追加分隔符
-		dst = append(dst, `, `...)
-	}
-
 	// 追加message内容
 	dst = append(dst, convert.StringToBytes(message)...)
+	// 追加分隔内容
+	dst = append(dst, `, `...)
+
+	// 遍历所有字段
+	for i, v := range val {
+		if i > 0 {
+			// 追加分隔符
+			dst = append(dst, `, `...)
+		}
+		// 追加字段并序列化
+		dst = appendField(false, dst, v)
+	}
 
 	// 返回组装好的数据
 	return dst
@@ -460,6 +466,13 @@ func appendFieldAndMsg(dst []byte, message string, val ...field.Field) []byte {
 // 返回示例，反引号内为实际内容:
 // `"fields": {"k1": "v1", ...}, "msg": "message"`
 func appendFieldAndMsgJSON(dst []byte, messageKey string, message string, fieldsKey string, val ...field.Field) []byte {
+	// 追加message字段及其内容
+	dst = append(dst, '"')
+	dst = append(dst, messageKey...)
+	dst = append(dst, `": "`...)
+	dst = append(dst, bytes.ReplaceAll(convert.StringToBytes(message), []byte(`"`), []byte(`\"`))...)
+	dst = append(dst, `", `...)
+
 	// 追加字段集字段
 	dst = append(dst, '"')
 	dst = append(dst, fieldsKey...)
@@ -474,14 +487,7 @@ func appendFieldAndMsgJSON(dst []byte, messageKey string, message string, fields
 		dst = appendField(true, dst, v)
 	}
 	// 追加字段结束括号
-	dst = append(dst, `}, `...)
-
-	// 追加message字段及其内容
-	dst = append(dst, '"')
-	dst = append(dst, messageKey...)
-	dst = append(dst, `": "`...)
-	dst = append(dst, convert.StringToBytes(message)...)
-	dst = append(dst, '"')
+	dst = append(dst, '}')
 
 	// 返回组装好的数据
 	return dst

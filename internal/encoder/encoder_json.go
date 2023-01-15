@@ -1,6 +1,7 @@
 package encoder
 
 import (
+	"strings"
 	"time"
 
 	"github.com/bearki/belog/v2/field"
@@ -77,27 +78,43 @@ func checkJsonOptionValid(opt JsonEncoderOption) JsonEncoderOption {
 	// 构建剩余参数默认值
 	if len(opt.TimeKey) == 0 {
 		opt.TimeKey = DefaultJsonOption.TimeKey
+	} else {
+		opt.TimeKey = strings.ReplaceAll(opt.TimeKey, `"`, `\"`)
 	}
 	if len(opt.LevelKey) == 0 {
 		opt.LevelKey = DefaultJsonOption.LevelKey
+	} else {
+		opt.LevelKey = strings.ReplaceAll(opt.LevelKey, `"`, `\"`)
 	}
 	if len(opt.MsgKey) == 0 {
 		opt.MsgKey = DefaultJsonOption.MsgKey
+	} else {
+		opt.MsgKey = strings.ReplaceAll(opt.MsgKey, `"`, `\"`)
 	}
 	if len(opt.FieldsKey) == 0 {
 		opt.FieldsKey = DefaultJsonOption.FieldsKey
+	} else {
+		opt.FieldsKey = strings.ReplaceAll(opt.FieldsKey, `"`, `\"`)
 	}
 	if len(opt.StackKey) == 0 {
 		opt.StackKey = DefaultJsonOption.StackKey
+	} else {
+		opt.StackKey = strings.ReplaceAll(opt.StackKey, `"`, `\"`)
 	}
 	if len(opt.StackFileKey) == 0 {
 		opt.StackFileKey = DefaultJsonOption.StackFileKey
+	} else {
+		opt.StackFileKey = strings.ReplaceAll(opt.StackFileKey, `"`, `\"`)
 	}
 	if len(opt.StackLineNoKey) == 0 {
 		opt.StackLineNoKey = DefaultJsonOption.StackLineNoKey
+	} else {
+		opt.StackLineNoKey = strings.ReplaceAll(opt.StackLineNoKey, `"`, `\"`)
 	}
 	if len(opt.StackMethodKey) == 0 {
 		opt.StackMethodKey = DefaultJsonOption.StackMethodKey
+	} else {
+		opt.StackMethodKey = strings.ReplaceAll(opt.StackMethodKey, `"`, `\"`)
 	}
 	// 检查完成
 	return opt
