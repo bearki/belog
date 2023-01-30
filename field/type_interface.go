@@ -142,3 +142,10 @@ func Interface(key string, val interface{}) Field {
 		}
 	}
 }
+
+// Interface 格式化任意类型的字段信息
+//
+// @Desc 注意：未在枚举列表的类型将使用反射进行格式化，性能会有所降低
+func Any(key string, val interface{}) Field {
+	return Interface(key, val)
+}
