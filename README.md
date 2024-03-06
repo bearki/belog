@@ -1,4 +1,5 @@
 # BeLog 高性能日志库（结构化日志）
+
 [![Go Version](https://img.shields.io/github/go-mod/go-version/bearki/belog)](https://go.dev/)
 [![Go Doc](https://pkg.go.dev/badge/github.com/bearki/belog/v2.svg)](https://pkg.go.dev/github.com/bearki/belog/v2)
 [![Latest Release](https://img.shields.io/github/v/release/bearki/belog)](https://github.com/bearki/belog/releases)
@@ -6,7 +7,9 @@
 这是一个高度解耦的日志框架，支持多适配器同时输出，你可以发挥自己的想象力，随意的创建自己喜爱的适配器；我们已经提供了几个简单的适配器实现，你会注意到它们都实现了 `logger` 中的 `Adapter` 接口，只要该接口的适配器均可挂载到 `logger` 中，你可以查看我们的适配器源码来编写自己的适配器。
 
 ## 基准测试
+
 1、测试静态字符串格式化
+
 ```txt
 goos: windows
 goarch: amd64
@@ -22,7 +25,8 @@ ok      github.com/bearki/belog/v2/test 1.703s
 > 测试运行完成时间: 2022/10/13 13:06:25 <
 ```
 
-2、测试5个字段格式化
+2、测试 5 个字段格式化
+
 ```txt
 goos: windows
 goarch: amd64
@@ -38,7 +42,8 @@ ok      github.com/bearki/belog/v2/test 2.209s
 > 测试运行完成时间: 2022/10/13 13:27:31 <
 ```
 
-3、测试10个字段格式化
+3、测试 10 个字段格式化
+
 ```txt
 goos: windows
 goarch: amd64
@@ -55,6 +60,7 @@ ok      github.com/bearki/belog/v2/test 1.176s
 ```
 
 4、测试切片字段格式化
+
 ```txt
 goos: windows
 goarch: amd64
@@ -71,6 +77,7 @@ ok      github.com/bearki/belog/v2/test 2.093s
 ```
 
 4、测试反射字段格式化
+
 ```txt
 goos: windows
 goarch: amd64
@@ -87,12 +94,15 @@ ok      github.com/bearki/belog/v2/test 1.218s
 ```
 
 ## 安装
+
 ```shell
 go get -u github.com/bearki/belog/v2
 ```
 
 ## 快速使用
+
 如果你想快速体验 `BeLog` 的特性，我们已内置了一个默认 `Console` 实例，你可以直接使用以下方式输出你的日志内容
+
 ```go
 package main
 
@@ -112,7 +122,9 @@ func main() {
 ```
 
 ## 实例使用
+
 正常情况下我们一般会使用这种方式来使用 `BeLog` ，我们也推荐使用该方式来记录日志
+
 ```go
 package main
 
@@ -166,14 +178,19 @@ func main() {
 ```
 
 ## 二次封装
+
 你可以参考 `belog.go` 的方式将 `BeLog` 进行二次封装，这样通过自己的包即可记录日志，防止在过多的包中引入第三方包，便于后期的管理，值得注意的是，二次封装时需要配置函数栈层数，否则将会造成文件名及行数捕获不一致的问题，大多数情况下采用如下层级即可
+
 ```go
 DefaultLog.SetSkip(1)
 ```
 
 ## 自定义适配器
+
 没有过多的繁琐操作，实现 `logger/interface.go` 中的 `Adapter` 接口即可完成适配器自定义工作，最简实现方式在 `discard` 适配器中
+
 ### 适配器接口
+
 ```go
 // Adapter 适配器接口
 type Adapter interface {
@@ -184,26 +201,26 @@ type Adapter interface {
 
 	// Print 普通日志打印方法
 	//
-	// @params logTime 日记记录时间
+	//	@var logTime 日记记录时间
 	//
-	// @params level 日志级别
+	//	@var level 日志级别
 	//
-	// @params content 日志内容
+	//	@var content 日志内容
 	Print(logTime time.Time, level level.Level, content []byte)
 
 	// PrintStack 调用栈日志打印方法
 	//
-	// @params logTime 日记记录时间
+	//	@var logTime 日记记录时间
 	//
-	// @params level 日志级别
+	//	@var level 日志级别
 	//
-	// @params content 日志内容
+	//	@var content 日志内容
 	//
-	// @params fileName 日志记录调用文件路径
+	//	@var fileName 日志记录调用文件路径
 	//
-	// @params lineNo 日志记录调用文件行号
+	//	@var lineNo 日志记录调用文件行号
 	//
-	// @params methodName 日志记录调用函数名
+	//	@var methodName 日志记录调用函数名
 	PrintStack(logTime time.Time, level level.Level, content []byte, fileName string, lineNo int, methodName string)
 
 	// Flush 日志缓存刷新
@@ -214,7 +231,9 @@ type Adapter interface {
 	Flush()
 }
 ```
+
 ### 适配器实现
+
 ```go
 package discard
 
@@ -236,47 +255,38 @@ func New() logger.Adapter {
 }
 
 // Name 用于获取适配器名称
-//
 // 注意：请确保适配器名称不与其他适配器名称冲突
 func (e *Adapter) Name() string {
 	return "belog-discard-adapter"
 }
 
 // Print 普通日志打印方法
-//
-// @params logTime 日记记录时间
-//
-// @params level 日志级别
-//
-// @params content 日志内容
+//	@var logTime 日记记录时间
+//	@var level 日志级别
+//	@var content 日志内容
 func (e *Adapter) Print(_ time.Time, _ level.Level, content []byte) {
 	io.Discard.Write(content)
 }
 
 // PrintStack 调用栈日志打印方法
-//
-// @params logTime 日记记录时间
-//
-// @params level 日志级别
-//
-// @params content 日志内容
-//
-// @params fileName 日志记录调用文件路径
-//
-// @params lineNo 日志记录调用文件行号
-//
-// @params methodName 日志记录调用函数名
+//	@var logTime 日记记录时间
+//	@var level 日志级别
+//	@var content 日志内容
+//	@var fileName 日志记录调用文件路径
+//	@var lineNo 日志记录调用文件行号
+//	@var methodName 日志记录调用函数名
 func (e *Adapter) PrintStack(_ time.Time, _ level.Level, content []byte, _ string, _ int, _ string) {
 	io.Discard.Write(content)
 }
 
 // Flush 日志缓存刷新
-//
 // 用于日志缓冲区刷新
 // 接收到该通知后需要立即将缓冲区中的日志持久化
 func (e *Adapter) Flush() {}
 ```
+
 ### 适配器挂载
+
 ```go
 package mylog
 

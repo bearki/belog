@@ -132,17 +132,12 @@ func NewJsonEncoder(opt JsonEncoderOption) *JsonEncoder {
 
 // Encode 编码输出方法
 //
-// @params dst 填充目标
-//
-// @params t 日志记录时间
-//
-// @params l 日志级别
-//
-// @params msg 日志描述
-//
-// @params val 日志内容字段
-//
-// @return 填充后的内容
+//	@var dst 填充目标
+//	@var t 日志记录时间
+//	@var l 日志级别
+//	@var msg 日志描述
+//	@var val 日志内容字段
+//	@return 填充后的内容
 func (e *JsonEncoder) Encode(dst []byte, t time.Time, l level.Level, msg string, val ...field.Field) []byte {
 	// 开始追加内容
 	dst = append(dst, '{')
@@ -159,23 +154,15 @@ func (e *JsonEncoder) Encode(dst []byte, t time.Time, l level.Level, msg string,
 
 // EncodeStack 含调用栈编码输出方法
 //
-// @params dst 填充目标
-//
-// @params t 日志记录时间
-//
-// @params l 日志级别
-//
-// @params fn 调用栈文件名
-//
-// @params ln 调用栈行号
-//
-// @params mn 调用栈函数名
-//
-// @params msg 日志描述
-//
-// @params val 日志内容字段
-//
-// @return 填充后的内容
+//	@var dst 填充目标
+//	@var t 日志记录时间
+//	@var l 日志级别
+//	@var fn 调用栈文件名
+//	@var ln 调用栈行号
+//	@var mn 调用栈函数名
+//	@var msg 日志描述
+//	@var val 日志内容字段
+//	@return 填充后的内容
 func (e *JsonEncoder) EncodeStack(dst []byte, t time.Time, l level.Level, fn string, ln int, mn string, msg string, val ...field.Field) []byte {
 	// 开始追加内容
 	dst = append(dst, '{')

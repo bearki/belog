@@ -56,9 +56,8 @@ type belog struct {
 
 // New 初始化一个日志记录器实例
 //
-// @params adapter 日志适配器
-//
-// @return 日志记录器实例
+//	@var adapter 日志适配器
+//	@return 日志记录器实例
 func New(option Option, adapter ...Adapter) (Logger, error) {
 	// 获取有效参数
 	option = checkOptionValid(option)
@@ -93,9 +92,8 @@ func New(option Option, adapter ...Adapter) (Logger, error) {
 
 // SetAdapter 设置日志记录适配器
 //
-// @params adapter 适配器实例
-//
-// @return error 错误信息
+//	@var adapter 适配器实例
+//	@return error 错误信息
 func (b *belog) SetAdapter(adapter Adapter) error {
 	// 适配器是否为空
 	if adapter == nil {
@@ -144,7 +142,7 @@ func (b *belog) levelIsExist(l level.Level) bool {
 
 // SetLevel 设置日志记录保存级别
 //
-// @params val 日志记录级别（会覆盖上一次的级别配置）
+//	@var val 日志记录级别（会覆盖上一次的级别配置）
 func (b *belog) SetLevel(ls ...level.Level) {
 	// 加个写锁
 	b.levelMapRWMutex.Lock()
@@ -165,15 +163,13 @@ func (b *belog) SetLevel(ls ...level.Level) {
 
 // SetSkip 配置需要向上捕获的函数栈层数
 //
-// @params skip 需要跳过的函数栈层数
-//
-// @return 日志记录器实例
+//	@var skip 需要跳过的函数栈层数
+//	@return 日志记录器实例
 func (b *belog) SetSkip(skip uint) {
 	b.stackSkip = stackBaseSkip + skip
 }
 
 // Flush 日志缓存刷新
-//
 // 用于日志缓冲区刷新，
 // 建议在程序正常退出时调用一次日志刷新，
 // 以保证日志能完整的持久化

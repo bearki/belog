@@ -421,13 +421,10 @@ func appendField(isJson bool, dst []byte, val field.Field) []byte {
 
 // appendFieldAndMsg 将字段拼接为行格式
 //
-// @params dst 目标切片
-//
-// @params message 日志消息
-//
-// @params val 字段列表
-//
-// @return 序列化后的行格式字段字符串
+//	@var dst 目标切片
+//	@var message 日志消息
+//	@var val 字段列表
+//	@return 序列化后的行格式字段字符串
 //
 // 返回示例，反引号内为实际内容:
 // `k1: v1, k2: v2, ..., message`
@@ -453,17 +450,12 @@ func appendFieldAndMsg(dst []byte, message string, val ...field.Field) []byte {
 
 // appendFieldAndMsgJSON 将字段拼接为json格式
 //
-// @params dst 目标切片
-//
-// @params messageKey 消息的键名
-//
-// @params message 消息内容
-//
-// @params fieldsKey 包裹所有字段的键名
-//
-// @params val 字段列表
-//
-// @return 序列化后的JSON格式字段字符串
+//	@var dst 目标切片
+//	@var messageKey 消息的键名
+//	@var message 消息内容
+//	@var fieldsKey 包裹所有字段的键名
+//	@var val 字段列表
+//	@return 序列化后的JSON格式字段字符串
 //
 // 返回示例，反引号内为实际内容:
 // `"fields": {"k1": "v1", ...}, "msg": "message"`

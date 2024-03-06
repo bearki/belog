@@ -11,38 +11,38 @@ import (
 type Encoder interface {
 	// Encode 编码输出方法
 	//
-	// @params dst 填充目标
+	//	@var dst 填充目标
 	//
-	// @params t 日志记录时间
+	//	@var t 日志记录时间
 	//
-	// @params l 日志级别
+	//	@var l 日志级别
 	//
-	// @params msg 日志描述
+	//	@var msg 日志描述
 	//
-	// @params val 日志内容字段
+	//	@var val 日志内容字段
 	//
-	// @return 填充后的内容
+	//	@return 填充后的内容
 	Encode(dst []byte, t time.Time, l level.Level, msg string, val ...field.Field) []byte
 
 	// EncodeStack 含调用栈编码输出方法
 	//
-	// @params dst 填充目标
+	//	@var dst 填充目标
 	//
-	// @params t 日志记录时间
+	//	@var t 日志记录时间
 	//
-	// @params l 日志级别
+	//	@var l 日志级别
 	//
-	// @params fn 调用栈文件名
+	//	@var fn 调用栈文件名
 	//
-	// @params ln 调用栈行号
+	//	@var ln 调用栈行号
 	//
-	// @params mn 调用栈函数名
+	//	@var mn 调用栈函数名
 	//
-	// @params msg 日志描述
+	//	@var msg 日志描述
 	//
-	// @params val 日志内容字段
+	//	@var val 日志内容字段
 	//
-	// @return 填充后的内容
+	//	@return 填充后的内容
 	EncodeStack(dst []byte, t time.Time, l level.Level, fn string, ln int, mn string, msg string, val ...field.Field) []byte
 }
 
@@ -55,26 +55,26 @@ type Adapter interface {
 
 	// Print 普通日志打印方法
 	//
-	// @params logTime 日记记录时间
+	//	@var logTime 日记记录时间
 	//
-	// @params level 日志级别
+	//	@var level 日志级别
 	//
-	// @params content 日志内容
+	//	@var content 日志内容
 	Print(logTime time.Time, level level.Level, content []byte)
 
 	// PrintStack 调用栈日志打印方法
 	//
-	// @params logTime 日记记录时间
+	//	@var logTime 日记记录时间
 	//
-	// @params level 日志级别
+	//	@var level 日志级别
 	//
-	// @params content 日志内容
+	//	@var content 日志内容
 	//
-	// @params fileName 日志记录调用文件路径
+	//	@var fileName 日志记录调用文件路径
 	//
-	// @params lineNo 日志记录调用文件行号
+	//	@var lineNo 日志记录调用文件行号
 	//
-	// @params methodName 日志记录调用函数名
+	//	@var methodName 日志记录调用函数名
 	PrintStack(logTime time.Time, level level.Level, content []byte, fileName string, lineNo int, methodName string)
 
 	// Flush 日志缓存刷新

@@ -6,13 +6,10 @@ import (
 
 // appendLevel 追加行格式的日志级别
 //
-// @params dst 目标切片
-//
-// @params l 级别
-//
-// @params useFullString 使用级别的完整字符串
-//
-// @return 序列化后的日志级别字符串
+//	@var dst 目标切片
+//	@var l 级别
+//	@var useFullString 使用级别的完整字符串
+//	@return 序列化后的日志级别字符串
 //
 // 返回示例，反引号内为实际内容:
 // `[T]`
@@ -29,15 +26,11 @@ func appendLevel(dst []byte, l level.Level, useFullString bool) []byte {
 
 // appendLevelJSON 追加行格式的日志级别
 //
-// @params dst 目标切片
-//
-// @params levelKey 日志级别JSON键名
-//
-// @params l 级别
-//
-// @params useFullString 使用级别的完整字符串
-//
-// @return 序列化后的日志级别字符串
+//	@var dst 目标切片
+//	@var levelKey 日志级别JSON键名
+//	@var l 级别
+//	@var useFullString 使用级别的完整字符串
+//	@return 序列化后的日志级别字符串
 //
 // 返回示例，反引号内为实际内容:
 // `"level": "T"`

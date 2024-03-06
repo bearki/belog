@@ -9,7 +9,7 @@ package field
 
 // 创建null值字段
 //
-// @params key 字段名称
+//	@var key 字段名称
 func nullField(key string) Field {
 	return Field{Key: key, Type: TypeNull, String: "null"}
 }

@@ -11,14 +11,10 @@ type BytesPool struct {
 }
 
 // NewBytesPool 初始化一个字节切片复用池
-//
-// @params maxNum 字节切片复用池容量
-//
-// @params initLen 字节切片初始长度
-//
-// @params initCap 字节切片初始容量
-//
-// @return 字节切片复用池指针
+//	@var maxNum 字节切片复用池容量
+//	@var initLen 字节切片初始长度
+//	@var initCap 字节切片初始容量
+//	@return 字节切片复用池指针
 func NewBytesPool(maxNum int, initLen int, initCap int) *BytesPool {
 	bp := &BytesPool{
 		bpc: make(chan []byte, maxNum),

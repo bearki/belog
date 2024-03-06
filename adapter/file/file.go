@@ -138,11 +138,9 @@ func (p *Options) validity() {
 
 // New 创建文件日志适配器
 //
-// @params options 文件日志适配器参数
-//
-// @return 文件日志适配器实例
-//
-// @return 错误信息
+//	@var options 文件日志适配器参数
+//	@return 文件日志适配器实例
+//	@return 错误信息
 func New(options Options) (logger.Adapter, error) {
 	// 判断参数有效性
 	options.validity()
@@ -203,7 +201,6 @@ func New(options Options) (logger.Adapter, error) {
 }
 
 // Name 用于获取适配器名称
-//
 // 注意：请确保适配器名称不与其他适配器名称冲突
 func (e *Adapter) Name() string {
 	return "belog-file-adapter"
@@ -211,11 +208,9 @@ func (e *Adapter) Name() string {
 
 // Print 普通日志打印方法
 //
-// @params t 日记记录时间
-//
-// @params l 日志级别
-//
-// @params c 日志内容
+//	@var t 日记记录时间
+//	@var l 日志级别
+//	@var c 日志内容
 func (e *Adapter) Print(_ time.Time, _ level.Level, c []byte) {
 	// 从对象池获取切片
 	logSlice := e.logBytesPool.Get()
@@ -231,17 +226,12 @@ func (e *Adapter) Print(_ time.Time, _ level.Level, c []byte) {
 
 // PrintStack 调用栈日志打印方法
 //
-// @params t 日记记录时间
-//
-// @params l 日志级别
-//
-// @params c 日志内容
-//
-// @params fn 日志记录调用文件路径
-//
-// @params ln 日志记录调用文件行号
-//
-// @params mn 日志记录调用函数名
+//	@var t 日记记录时间
+//	@var l 日志级别
+//	@var c 日志内容
+//	@var fn 日志记录调用文件路径
+//	@var ln 日志记录调用文件行号
+//	@var mn 日志记录调用函数名
 func (e *Adapter) PrintStack(_ time.Time, _ level.Level, c []byte, _ string, _ int, _ string) {
 	// 从对象池获取切片
 	logSlice := e.logBytesPool.Get()
@@ -256,7 +246,6 @@ func (e *Adapter) PrintStack(_ time.Time, _ level.Level, c []byte, _ string, _ i
 }
 
 // Flush 日志缓存刷新
-//
 // 用于日志缓冲区刷新
 // 接收到该通知后需要立即将缓冲区中的日志持久化
 func (e *Adapter) Flush() {
@@ -273,17 +262,12 @@ func (e *Adapter) Flush() {
 
 // openFileGetLines 打开文件并获取文件总行数
 //
-// @params fileName 文件路径
-//
-// @params flag 文件打开模式
-//
-// @params closeFile 结束时是否关闭文件
-//
-// @return 文件句柄
-//
-// @return 总行数
-//
-// @return 异常信息
+//	@var fileName 文件路径
+//	@var flag 文件打开模式
+//	@var closeFile 结束时是否关闭文件
+//	@return 文件句柄
+//	@return 总行数
+//	@return 异常信息
 func openFileGetLines(fileName string, flag int, closeFile bool) (*os.File, uint64, error) {
 	// 打开文件
 	file, err := os.OpenFile(fileName, flag, 0666)
@@ -363,13 +347,9 @@ func (e *Adapter) deleteTimeoutLogFile() {
 	}
 
 	// 获取当天整点时间
-	currDateStr := time.Now().Format("2006-01-02")
+	now := time.Now()
 	// 再解析成时间类型
-	currDate, err := time.Parse("2006-01-02", currDateStr)
-	if err != nil {
-		printWarningMsg(err.Error())
-		return
-	}
+	currDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
 	// 初始化正则
 	re := regexp.MustCompile(`[0-9]{4}-[0-9]{2}-[0-9]{2}`)

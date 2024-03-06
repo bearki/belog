@@ -27,11 +27,9 @@ func init() {
 
 // New 初始化一个日志记录器实例
 //
-// @params option 日志记录器初始化参数
-//
-// @params adapter 日志适配器
-//
-// @return 日志记录器实例
+//	@var option 日志记录器初始化参数
+//	@var adapter 日志适配器
+//	@return 日志记录器实例
 func New(option logger.Option, adapter ...logger.Adapter) (logger.Logger, error) {
 	// 返回日志示例指针
 	return logger.New(option, adapter...)
