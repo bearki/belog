@@ -62,9 +62,10 @@ type Option struct {
 
 // Adapter 控制台日志适配器
 type Adapter struct {
-	disabledBuffer bool          // 禁用缓冲区输出
-	disabledColor  bool          // 禁用颜色输出
-	write          *bufio.Writer // 写入缓冲器
+	disabledBuffer    bool          // 禁用缓冲区输出
+	disabledColor     bool          // 禁用颜色输出
+	stdoutWriteBuffer *bufio.Writer // 标准输出写入缓冲器
+	stderrWriteBuffer *bufio.Writer // 标准错误写入缓冲器
 }
 
 // New 创建控制台日志适配器
@@ -77,7 +78,8 @@ func New(opt Option) logger.Adapter {
 		disabledColor:  opt.DisabledColor,
 	}
 	if !opt.DisabledBuffer {
-		adapter.write = bufio.NewWriter(os.Stdout)
+		adapter.stdoutWriteBuffer = bufio.NewWriter(os.Stdout)
+		adapter.stderrWriteBuffer = bufio.NewWriter(os.Stderr)
 	}
 	return adapter
 }
@@ -117,13 +119,23 @@ func (e *Adapter) Print(_ time.Time, level logger.Level, content []byte) {
 	}
 
 	// 是否禁用缓冲区 或 缓冲器输出器为空
-	if e.disabledBuffer || e.write == nil {
-		_, _ = os.Stdout.Write(content)
+	if e.disabledBuffer || e.stdoutWriteBuffer == nil {
+		// 大于警告级别的往标准错误写
+		if level > logger.Warn {
+			_, _ = os.Stderr.Write(content)
+		} else {
+			_, _ = os.Stdout.Write(content)
+		}
 		return
 	}
 
 	// 使用缓冲区输出
-	_, _ = e.write.Write(content)
+	// 大于警告级别的往标准错误缓冲区写
+	if level > logger.Warn {
+		_, _ = e.stderrWriteBuffer.Write(content)
+	} else {
+		_, _ = e.stdoutWriteBuffer.Write(content)
+	}
 }
 
 // PrintStack 调用栈日志打印方法
@@ -157,20 +169,30 @@ func (e *Adapter) PrintStack(_ time.Time, level logger.Level, content []byte, _ 
 	}
 
 	// 是否禁用缓冲区 或 缓冲器输出器为空
-	if e.disabledBuffer || e.write == nil {
-		_, _ = os.Stdout.Write(content)
+	if e.disabledBuffer || e.stdoutWriteBuffer == nil {
+		// 大于警告级别的往标准错误写
+		if level > logger.Warn {
+			_, _ = os.Stderr.Write(content)
+		} else {
+			_, _ = os.Stdout.Write(content)
+		}
 		return
 	}
 
 	// 使用缓冲区输出
-	_, _ = e.write.Write(content)
+	// 大于警告级别的往标准错误缓冲区写
+	if level > logger.Warn {
+		_, _ = e.stderrWriteBuffer.Write(content)
+	} else {
+		_, _ = e.stdoutWriteBuffer.Write(content)
+	}
 }
 
 // Flush 日志缓存刷新
 //
 //	注意：用于日志缓冲区刷新，接收到该通知后需要立即将缓冲区中的日志持久化
 func (e *Adapter) Flush() {
-	if e.write != nil {
-		_ = e.write.Flush()
+	if e.stdoutWriteBuffer != nil {
+		_ = e.stdoutWriteBuffer.Flush()
 	}
 }
