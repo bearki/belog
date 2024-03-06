@@ -65,6 +65,11 @@ func Fatal(msg string, val ...field.Field) {
 //	@var adapter 日志适配器
 //	@return 日志记录器实例
 func New(option logger.Option, adapter ...logger.Adapter) (logger.Logger, error) {
+	// 检查编码器
+	if option.Encoder == nil {
+		// 赋值默认编码器
+		option.Encoder = encoder.NewJsonEncoder(encoder.DefaultJsonOption)
+	}
 	// 返回日志示例指针
 	return logger.New(option, adapter...)
 }
