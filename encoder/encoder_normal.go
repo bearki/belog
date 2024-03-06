@@ -3,8 +3,8 @@ package encoder
 import (
 	"time"
 
-	"github.com/bearki/belog/v2/field"
-	"github.com/bearki/belog/v2/level"
+	"github.com/bearki/belog/v3/field"
+	"github.com/bearki/belog/v3/logger"
 )
 
 // NormalEncoderOption 普通编码器参数
@@ -22,7 +22,7 @@ type NormalEncoder struct {
 	opt NormalEncoderOption
 }
 
-// checkNormalOptionValid 检查普通编码器参数有效性
+// 检查普通编码器参数有效性
 func checkNormalOptionValid(opt NormalEncoderOption) NormalEncoderOption {
 	// 检查基础参数有效性
 	opt.BaseOption = checkBaseOptionValid(opt.BaseOption)
@@ -31,7 +31,10 @@ func checkNormalOptionValid(opt NormalEncoderOption) NormalEncoderOption {
 }
 
 // NewNormalEncoder 创建一个普通格式编码器
-func NewNormalEncoder(opt NormalEncoderOption) *NormalEncoder {
+//
+//	@param	opt	编码器参数
+//	@return	普通编码器
+func NewNormalEncoder(opt NormalEncoderOption) logger.Encoder {
 	// 检查参数有效性
 	opt = checkNormalOptionValid(opt)
 	// 创建编码器
@@ -42,13 +45,13 @@ func NewNormalEncoder(opt NormalEncoderOption) *NormalEncoder {
 
 // Encode 编码输出方法
 //
-//	@var dst 填充目标
-//	@var t 日志记录时间
-//	@var l 日志级别
-//	@var msg 日志描述
-//	@var val 日志内容字段
-//	@return 填充后的内容
-func (e *NormalEncoder) Encode(dst []byte, t time.Time, l level.Level, msg string, val ...field.Field) []byte {
+//	@param	dst	填充目标
+//	@param	t	日志记录时间
+//	@param	l	日志级别
+//	@param	msg	日志描述
+//	@param	val	日志内容字段
+//	@return	填充后的内容
+func (e *NormalEncoder) Encode(dst []byte, t time.Time, l logger.Level, msg string, val ...field.Field) []byte {
 	// 开始追加内容
 	dst = appendTime(dst, t, e.opt.TimeFormat)
 	dst = append(dst, ' ')
@@ -63,16 +66,16 @@ func (e *NormalEncoder) Encode(dst []byte, t time.Time, l level.Level, msg strin
 
 // EncodeStack 含调用栈编码输出方法
 //
-//	@var dst 填充目标
-//	@var t 日志记录时间
-//	@var l 日志级别
-//	@var fn 调用栈文件名
-//	@var ln 调用栈行号
-//	@var mn 调用栈函数名
-//	@var msg 日志描述
-//	@var val 日志内容字段
+//	@param	dst	填充目标
+//	@param	t	日志记录时间
+//	@param	l	日志级别
+//	@param	fn	调用栈文件名
+//	@param	ln	调用栈行号
+//	@param	mn	调用栈函数名
+//	@param	msg	日志描述
+//	@param	val	日志内容字段
 //	@return 填充后的内容
-func (e *NormalEncoder) EncodeStack(dst []byte, t time.Time, l level.Level, fn string, ln int, mn string, msg string, val ...field.Field) []byte {
+func (e *NormalEncoder) EncodeStack(dst []byte, t time.Time, l logger.Level, fn string, ln int, mn string, msg string, val ...field.Field) []byte {
 	// 开始追加内容
 	dst = appendTime(dst, t, e.opt.TimeFormat)
 	dst = append(dst, ' ')

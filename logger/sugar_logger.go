@@ -9,8 +9,6 @@ package logger
 
 import (
 	"fmt"
-
-	"github.com/bearki/belog/v2/level"
 )
 
 // SugarBelog 语法糖记录器
@@ -18,8 +16,8 @@ type SugarBelog struct {
 	*belog
 }
 
-// check 常规日志前置判断和序列化
-func (s *SugarBelog) check(l level.Level, msg string, val ...interface{}) {
+// 常规日志前置判断和序列化
+func (s *SugarBelog) check(l Level, msg string, val ...interface{}) {
 	fmt.Println("SugarBelog Unrealized")
 	// // 判断当前级别日志是否需要记录
 	// if !s.levelIsExist(l) {
@@ -101,30 +99,30 @@ func (s *SugarBelog) check(l level.Level, msg string, val ...interface{}) {
 
 // Trace 通知级别的日志
 func (s *SugarBelog) Trace(msg string, val ...interface{}) {
-	s.check(level.Trace, msg, val...)
+	s.check(Trace, msg, val...)
 }
 
 // Debug 调试级别的日志
 func (s *SugarBelog) Debug(msg string, val ...interface{}) {
-	s.check(level.Debug, msg, val...)
+	s.check(Debug, msg, val...)
 }
 
 // Info 普通级别的日志
 func (s *SugarBelog) Info(msg string, val ...interface{}) {
-	s.check(level.Info, msg, val...)
+	s.check(Info, msg, val...)
 }
 
 // Warn 警告级别的日志
 func (s *SugarBelog) Warn(msg string, val ...interface{}) {
-	s.check(level.Warn, msg, val...)
+	s.check(Warn, msg, val...)
 }
 
 // Error 错误级别的日志
 func (s *SugarBelog) Error(msg string, val ...interface{}) {
-	s.check(level.Error, msg, val...)
+	s.check(Error, msg, val...)
 }
 
 // Fatal 致命级别的日志
 func (s *SugarBelog) Fatal(msg string, val ...interface{}) {
-	s.check(level.Fatal, msg, val...)
+	s.check(Fatal, msg, val...)
 }

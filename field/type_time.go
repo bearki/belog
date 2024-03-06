@@ -3,7 +3,7 @@ package field
 import (
 	"time"
 
-	"github.com/bearki/belog/v2/internal/convert"
+	"github.com/bearki/belog/v3/pkg/convert"
 )
 
 //------------------------------ 值类型转换 ------------------------------//

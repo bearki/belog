@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bearki/belog/v2/field"
-	"github.com/bearki/belog/v2/internal/convert"
+	"github.com/bearki/belog/v3/field"
+	"github.com/bearki/belog/v3/pkg/convert"
 )
 
 // 追加字段普通类型值
@@ -373,7 +373,7 @@ func appendFieldValues(isJson bool, dst []byte, val field.Field) []byte {
 	return dst
 }
 
-// appendField 追加字段
+// 追加字段
 func appendField(isJson bool, dst []byte, val field.Field) []byte {
 	// 是否为JSON格式
 	if isJson {
@@ -419,29 +419,31 @@ func appendField(isJson bool, dst []byte, val field.Field) []byte {
 	return dst
 }
 
-// appendFieldAndMsg 将字段拼接为行格式
+// 将字段拼接为行格式
 //
-//	@var dst 目标切片
-//	@var message 日志消息
-//	@var val 字段列表
-//	@return 序列化后的行格式字段字符串
+//	@param	dst		目标切片
+//	@param	message	日志消息
+//	@param	val		字段列表
+//	@return	序列化后的行格式字段字符串
 //
-// 返回示例，反引号内为实际内容:
-// `k1: v1, k2: v2, ..., message`
+// 返回示例: message, k1: v1, k2: v2, ...
 func appendFieldAndMsg(dst []byte, message string, val ...field.Field) []byte {
 	// 追加message内容
 	dst = append(dst, convert.StringToBytes(message)...)
-	// 追加分隔内容
-	dst = append(dst, `, `...)
 
-	// 遍历所有字段
-	for i, v := range val {
-		if i > 0 {
-			// 追加分隔符
-			dst = append(dst, `, `...)
+	// 字段数是否不为空
+	if len(val) > 0 {
+		// 追加分隔内容
+		dst = append(dst, `, `...)
+		// 遍历所有字段
+		for i, v := range val {
+			if i > 0 {
+				// 追加分隔符
+				dst = append(dst, `, `...)
+			}
+			// 追加字段并序列化
+			dst = appendField(false, dst, v)
 		}
-		// 追加字段并序列化
-		dst = appendField(false, dst, v)
 	}
 
 	// 返回组装好的数据
@@ -450,17 +452,16 @@ func appendFieldAndMsg(dst []byte, message string, val ...field.Field) []byte {
 
 // appendFieldAndMsgJSON 将字段拼接为json格式
 //
-//	@var dst 目标切片
-//	@var messageKey 消息的键名
-//	@var message 消息内容
-//	@var fieldsKey 包裹所有字段的键名
-//	@var val 字段列表
-//	@return 序列化后的JSON格式字段字符串
+//	@param	dst			目标切片
+//	@param	messageKey	消息的键名
+//	@param	message		消息内容
+//	@param	fieldsKey	包裹所有字段的键名
+//	@param	val			字段列表
+//	@return	序列化后的JSON格式字段字符串
 //
-// 返回示例，反引号内为实际内容:
-// `"fields": {"k1": "v1", ...}, "msg": "message"`
+// 返回示例: "msg": "message", "fields": {"k1": "v1", ...}
 func appendFieldAndMsgJSON(dst []byte, messageKey string, message string, fieldsKey string, val ...field.Field) []byte {
-	// 追加message字段及其内容
+	// 追加message字段
 	dst = append(dst, '"')
 	dst = append(dst, messageKey...)
 	dst = append(dst, `": "`...)
@@ -468,23 +469,26 @@ func appendFieldAndMsgJSON(dst []byte, messageKey string, message string, fields
 		message = strings.ReplaceAll(message, `"`, `\"`)
 	}
 	dst = append(dst, convert.StringToBytes(message)...)
-	dst = append(dst, `", `...)
+	dst = append(dst, `"`...)
 
-	// 追加字段集字段
-	dst = append(dst, '"')
-	dst = append(dst, fieldsKey...)
-	dst = append(dst, `": {`...)
-	// 遍历所有字段
-	for i, v := range val {
-		// 从第二个有效字段开始追加分隔符号
-		if i > 0 {
-			dst = append(dst, `, `...)
+	// 字段数是否不为空
+	if len(val) > 0 {
+		// 追加字段集字段
+		dst = append(dst, `, "`...)
+		dst = append(dst, fieldsKey...)
+		dst = append(dst, `": {`...)
+		// 遍历所有字段
+		for i, v := range val {
+			// 从第二个有效字段开始追加分隔符号
+			if i > 0 {
+				dst = append(dst, `, `...)
+			}
+			// 追加字段并序列化
+			dst = appendField(true, dst, v)
 		}
-		// 追加字段并序列化
-		dst = appendField(true, dst, v)
+		// 追加字段结束括号
+		dst = append(dst, '}')
 	}
-	// 追加字段结束括号
-	dst = append(dst, '}')
 
 	// 返回组装好的数据
 	return dst

@@ -1,4 +1,4 @@
-package level
+package logger
 
 // Level 日志级别类型
 type Level uint8

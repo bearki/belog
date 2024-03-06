@@ -1,7 +1,7 @@
-# BeLog 高性能日志库（结构化日志）
+# Belog 高性能日志库（结构化日志）
 
 [![Go Version](https://img.shields.io/github/go-mod/go-version/bearki/belog)](https://go.dev/)
-[![Go Doc](https://pkg.go.dev/badge/github.com/bearki/belog/v2.svg)](https://pkg.go.dev/github.com/bearki/belog/v2)
+[![Go Doc](https://pkg.go.dev/badge/github.com/bearki/belog/v3.svg)](https://pkg.go.dev/github.com/bearki/belog/v3)
 [![Latest Release](https://img.shields.io/github/v/release/bearki/belog)](https://github.com/bearki/belog/releases)
 
 这是一个高度解耦的日志框架，支持多适配器同时输出，你可以发挥自己的想象力，随意的创建自己喜爱的适配器；我们已经提供了几个简单的适配器实现，你会注意到它们都实现了 `logger` 中的 `Adapter` 接口，只要该接口的适配器均可挂载到 `logger` 中，你可以查看我们的适配器源码来编写自己的适配器。
@@ -13,16 +13,16 @@
 ```txt
 goos: windows
 goarch: amd64
-pkg: github.com/bearki/belog/v2/test
+pkg: github.com/bearki/belog/v3/test
 cpu: Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz
 BenchmarkBelogLoggerFormatStatic
 BenchmarkBelogLoggerFormatStatic-12
  6137994               194.0 ns/op             0 B/op          0 allocs/op
 PASS
-ok      github.com/bearki/belog/v2/test 1.703s
+ok      github.com/bearki/belog/v3/test 1.703s
 
 
-> 测试运行完成时间: 2022/10/13 13:06:25 <
+> 测试运行完成时间: 2024/03/06 13:06:25 <
 ```
 
 2、测试 5 个字段格式化
@@ -30,16 +30,16 @@ ok      github.com/bearki/belog/v2/test 1.703s
 ```txt
 goos: windows
 goarch: amd64
-pkg: github.com/bearki/belog/v2/test
+pkg: github.com/bearki/belog/v3/test
 cpu: Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz
 BenchmarkBelogLoggerFormatFiveFields
 BenchmarkBelogLoggerFormatFiveFields-12
  1696510               697.2 ns/op           320 B/op          1 allocs/op
 PASS
-ok      github.com/bearki/belog/v2/test 2.209s
+ok      github.com/bearki/belog/v3/test 2.209s
 
 
-> 测试运行完成时间: 2022/10/13 13:27:31 <
+> 测试运行完成时间: 2024/03/06 13:27:31 <
 ```
 
 3、测试 10 个字段格式化
@@ -47,16 +47,16 @@ ok      github.com/bearki/belog/v2/test 2.209s
 ```txt
 goos: windows
 goarch: amd64
-pkg: github.com/bearki/belog/v2/test
+pkg: github.com/bearki/belog/v3/test
 cpu: Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz
 BenchmarkBelogLoggerFormatTenFields
 BenchmarkBelogLoggerFormatTenFields-12
   936278              1180 ns/op             640 B/op          1 allocs/op
 PASS
-ok      github.com/bearki/belog/v2/test 1.176s
+ok      github.com/bearki/belog/v3/test 1.176s
 
 
-> 测试运行完成时间: 2022/10/13 13:28:54 <
+> 测试运行完成时间: 2024/03/06 13:28:54 <
 ```
 
 4、测试切片字段格式化
@@ -64,16 +64,16 @@ ok      github.com/bearki/belog/v2/test 1.176s
 ```txt
 goos: windows
 goarch: amd64
-pkg: github.com/bearki/belog/v2/test
+pkg: github.com/bearki/belog/v3/test
 cpu: Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz
 BenchmarkBelogLoggerFormatSlice
 BenchmarkBelogLoggerFormatSlice-12
  2113472               573.2 ns/op           248 B/op          3 allocs/op
 PASS
-ok      github.com/bearki/belog/v2/test 2.093s
+ok      github.com/bearki/belog/v3/test 2.093s
 
 
-> 测试运行完成时间: 2022/10/13 13:35:35 <
+> 测试运行完成时间: 2024/03/06 13:35:35 <
 ```
 
 4、测试反射字段格式化
@@ -81,33 +81,33 @@ ok      github.com/bearki/belog/v2/test 2.093s
 ```txt
 goos: windows
 goarch: amd64
-pkg: github.com/bearki/belog/v2/test
+pkg: github.com/bearki/belog/v3/test
 cpu: Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz
 BenchmarkBelogLoggerFormatInterface
 BenchmarkBelogLoggerFormatInterface-12
   649614              1753 ns/op            1096 B/op         18 allocs/op
 PASS
-ok      github.com/bearki/belog/v2/test 1.218s
+ok      github.com/bearki/belog/v3/test 1.218s
 
 
-> 测试运行完成时间: 2022/10/13 13:41:16 <
+> 测试运行完成时间: 2024/03/06 13:41:16 <
 ```
 
 ## 安装
 
 ```shell
-go get -u github.com/bearki/belog/v2
+go get -u github.com/bearki/belog/v3
 ```
 
 ## 快速使用
 
-如果你想快速体验 `BeLog` 的特性，我们已内置了一个默认 `Console` 实例，你可以直接使用以下方式输出你的日志内容
+如果你想快速体验 `Belog` 的特性，我们已内置了一个默认 `Console` 实例，你可以直接使用以下方式输出你的日志内容
 
 ```go
 package main
 
 import (
-	"github.com/bearki/belog/v2"
+	"github.com/bearki/belog/v3"
 )
 
 func main() {
@@ -123,16 +123,16 @@ func main() {
 
 ## 实例使用
 
-正常情况下我们一般会使用这种方式来使用 `BeLog` ，我们也推荐使用该方式来记录日志
+正常情况下我们一般会使用这种方式来使用 `Belog` ，我们也推荐使用该方式来记录日志
 
 ```go
 package main
 
 import (
-	"github.com/bearki/belog/v2"
-	"github.com/bearki/belog/v2/adapter/file"
-	"github.com/bearki/belog/v2/field"
-	"github.com/bearki/belog/v2/logger"
+	"github.com/bearki/belog/v3"
+	"github.com/bearki/belog/v3/adapter/file"
+	"github.com/bearki/belog/v3/field"
+	"github.com/bearki/belog/v3/logger"
 )
 
 func main() {
@@ -179,7 +179,7 @@ func main() {
 
 ## 二次封装
 
-你可以参考 `belog.go` 的方式将 `BeLog` 进行二次封装，这样通过自己的包即可记录日志，防止在过多的包中引入第三方包，便于后期的管理，值得注意的是，二次封装时需要配置函数栈层数，否则将会造成文件名及行数捕获不一致的问题，大多数情况下采用如下层级即可
+你可以参考 `belog.go` 的方式将 `Belog` 进行二次封装，这样通过自己的包即可记录日志，防止在过多的包中引入第三方包，便于后期的管理，值得注意的是，二次封装时需要配置函数栈层数，否则将会造成文件名及行数捕获不一致的问题，大多数情况下采用如下层级即可
 
 ```go
 DefaultLog.SetSkip(1)
@@ -196,38 +196,29 @@ DefaultLog.SetSkip(1)
 type Adapter interface {
 	// Name 用于获取适配器名称
 	//
-	// 注意：请确保适配器名称不与其他适配器名称冲突
+	//	注意：请确保适配器名称不与其他适配器名称冲突
 	Name() string
 
 	// Print 普通日志打印方法
 	//
-	//	@var logTime 日记记录时间
-	//
-	//	@var level 日志级别
-	//
-	//	@var content 日志内容
-	Print(logTime time.Time, level level.Level, content []byte)
+	//	@param	logTime	日记记录时间
+	//	@param	level	日志级别
+	//	@param	content	日志内容
+	Print(logTime time.Time, level Level, content []byte)
 
 	// PrintStack 调用栈日志打印方法
 	//
-	//	@var logTime 日记记录时间
-	//
-	//	@var level 日志级别
-	//
-	//	@var content 日志内容
-	//
-	//	@var fileName 日志记录调用文件路径
-	//
-	//	@var lineNo 日志记录调用文件行号
-	//
-	//	@var methodName 日志记录调用函数名
-	PrintStack(logTime time.Time, level level.Level, content []byte, fileName string, lineNo int, methodName string)
+	//	@param	logTime		日记记录时间
+	//	@param	level		日志级别
+	//	@param	content		日志内容
+	//	@param	fileName	日志记录调用文件路径
+	//	@param	lineNo		日志记录调用文件行号
+	//	@param	methodName	日志记录调用函数名
+	PrintStack(logTime time.Time, level Level, content []byte, fileName string, lineNo int, methodName string)
 
 	// Flush 日志缓存刷新
 	//
-	// 用于日志缓冲区刷新,
-	// 接收到该通知后需要立即将缓冲区中的日志持久化,
-	// 因为程序很有可能将在短时间内退出
+	//	注意：用于日志缓冲区刷新，接收到该通知后需要立即将缓冲区中的日志持久化
 	Flush()
 }
 ```
@@ -235,53 +226,63 @@ type Adapter interface {
 ### 适配器实现
 
 ```go
+/**
+ *@Title 无输出日志记录适配器
+ *@Desc 无输出打印将在这里完成
+ *@Author Bearki
+ *@DateTime 2021/09/21 19:16
+ */
+
 package discard
 
 import (
 	"io"
 	"time"
 
-	"github.com/bearki/belog/v2/level"
-	"github.com/bearki/belog/v2/logger"
+	"github.com/bearki/belog/v3/logger"
 )
 
 // Adapter 无输出日志适配器
-type Adapter struct {
-}
+type Adapter struct{}
 
 // New 创建无输出日志适配器
+//
+//	@return	适配器实例
 func New() logger.Adapter {
 	return &Adapter{}
 }
 
 // Name 用于获取适配器名称
-// 注意：请确保适配器名称不与其他适配器名称冲突
+//
+//	注意：请确保适配器名称不与其他适配器名称冲突
 func (e *Adapter) Name() string {
 	return "belog-discard-adapter"
 }
 
 // Print 普通日志打印方法
-//	@var logTime 日记记录时间
-//	@var level 日志级别
-//	@var content 日志内容
-func (e *Adapter) Print(_ time.Time, _ level.Level, content []byte) {
+//
+//	@param	logTime	日记记录时间
+//	@param	level	日志级别
+//	@param	content	日志内容
+func (e *Adapter) Print(_ time.Time, _ logger.Level, content []byte) {
 	io.Discard.Write(content)
 }
 
 // PrintStack 调用栈日志打印方法
-//	@var logTime 日记记录时间
-//	@var level 日志级别
-//	@var content 日志内容
-//	@var fileName 日志记录调用文件路径
-//	@var lineNo 日志记录调用文件行号
-//	@var methodName 日志记录调用函数名
-func (e *Adapter) PrintStack(_ time.Time, _ level.Level, content []byte, _ string, _ int, _ string) {
+//
+//	@param	logTime		日记记录时间
+//	@param	level		日志级别
+//	@param	content		日志内容
+//	@param	fileName	日志记录调用文件路径
+//	@param	lineNo		日志记录调用文件行号
+//	@param	methodName	日志记录调用函数名
+func (e *Adapter) PrintStack(_ time.Time, _ logger.Level, content []byte, _ string, _ int, _ string) {
 	io.Discard.Write(content)
 }
 
 // Flush 日志缓存刷新
-// 用于日志缓冲区刷新
-// 接收到该通知后需要立即将缓冲区中的日志持久化
+//
+//	注意：用于日志缓冲区刷新，接收到该通知后需要立即将缓冲区中的日志持久化
 func (e *Adapter) Flush() {}
 ```
 
@@ -293,7 +294,7 @@ package mylog
 import (
 	"${your_module_name}/discard"
 
-	"github.com/bearki/belog/v2"
+	"github.com/bearki/belog/v3"
 )
 
 func main() {

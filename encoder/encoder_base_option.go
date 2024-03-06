@@ -40,7 +40,7 @@ var DefaultBaseOption = BaseOption{
 	StackFileFormat: false,
 }
 
-// checkBaseOptionValid 检查编码器基础参数有效性
+// 检查编码器基础参数有效性
 func checkBaseOptionValid(opt BaseOption) BaseOption {
 	// 检验时间格式
 	if len(opt.TimeFormat) == 0 {

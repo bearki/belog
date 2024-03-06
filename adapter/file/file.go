@@ -20,9 +20,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bearki/belog/v2/internal/pool"
-	"github.com/bearki/belog/v2/level"
-	"github.com/bearki/belog/v2/logger"
+	"github.com/bearki/belog/v3/logger"
+	"github.com/bearki/belog/v3/pkg/pool"
 )
 
 // Options 文件日志适配器参数
@@ -94,13 +93,13 @@ type Adapter struct {
 	logBytesPool *pool.BytesPool // 日志字节流对象池
 }
 
-// printWarningMsg 打印警告信息
+// 打印警告信息
 func printWarningMsg(msg string) {
 	// _, _ = os.Stderr.WriteString(msg + "\r\n")
 	_, _ = os.Stdout.WriteString(msg + "\r\n")
 }
 
-// validity 判断参数有效性
+// 判断参数有效性
 func (p *Options) validity() {
 	// 转换路径为当前系统格式
 	p.LogPath = filepath.Join(p.LogPath)
@@ -138,9 +137,9 @@ func (p *Options) validity() {
 
 // New 创建文件日志适配器
 //
-//	@var options 文件日志适配器参数
-//	@return 文件日志适配器实例
-//	@return 错误信息
+//	@param	opt	适配器参数
+//	@return	适配器实例
+//	@return	异常信息
 func New(options Options) (logger.Adapter, error) {
 	// 判断参数有效性
 	options.validity()
@@ -201,17 +200,18 @@ func New(options Options) (logger.Adapter, error) {
 }
 
 // Name 用于获取适配器名称
-// 注意：请确保适配器名称不与其他适配器名称冲突
+//
+//	注意：请确保适配器名称不与其他适配器名称冲突
 func (e *Adapter) Name() string {
 	return "belog-file-adapter"
 }
 
 // Print 普通日志打印方法
 //
-//	@var t 日记记录时间
-//	@var l 日志级别
-//	@var c 日志内容
-func (e *Adapter) Print(_ time.Time, _ level.Level, c []byte) {
+//	@param	logTime	日记记录时间
+//	@param	level	日志级别
+//	@param	content	日志内容
+func (e *Adapter) Print(_ time.Time, _ logger.Level, c []byte) {
 	// 从对象池获取切片
 	logSlice := e.logBytesPool.Get()
 	// 检查是否需要扩容
@@ -226,13 +226,13 @@ func (e *Adapter) Print(_ time.Time, _ level.Level, c []byte) {
 
 // PrintStack 调用栈日志打印方法
 //
-//	@var t 日记记录时间
-//	@var l 日志级别
-//	@var c 日志内容
-//	@var fn 日志记录调用文件路径
-//	@var ln 日志记录调用文件行号
-//	@var mn 日志记录调用函数名
-func (e *Adapter) PrintStack(_ time.Time, _ level.Level, c []byte, _ string, _ int, _ string) {
+//	@param	logTime		日记记录时间
+//	@param	level		日志级别
+//	@param	content		日志内容
+//	@param	fileName	日志记录调用文件路径
+//	@param	lineNo		日志记录调用文件行号
+//	@param	methodName	日志记录调用函数名
+func (e *Adapter) PrintStack(_ time.Time, _ logger.Level, c []byte, _ string, _ int, _ string) {
 	// 从对象池获取切片
 	logSlice := e.logBytesPool.Get()
 	// 检查是否需要扩容
@@ -246,8 +246,8 @@ func (e *Adapter) PrintStack(_ time.Time, _ level.Level, c []byte, _ string, _ i
 }
 
 // Flush 日志缓存刷新
-// 用于日志缓冲区刷新
-// 接收到该通知后需要立即将缓冲区中的日志持久化
+//
+//	注意：用于日志缓冲区刷新，接收到该通知后需要立即将缓冲区中的日志持久化
 func (e *Adapter) Flush() {
 	// 加锁
 	e.flushMutex.Lock()
@@ -260,14 +260,7 @@ func (e *Adapter) Flush() {
 	<-e.flushOverSignal
 }
 
-// openFileGetLines 打开文件并获取文件总行数
-//
-//	@var fileName 文件路径
-//	@var flag 文件打开模式
-//	@var closeFile 结束时是否关闭文件
-//	@return 文件句柄
-//	@return 总行数
-//	@return 异常信息
+// 打开文件并获取文件总行数
 func openFileGetLines(fileName string, flag int, closeFile bool) (*os.File, uint64, error) {
 	// 打开文件
 	file, err := os.OpenFile(fileName, flag, 0666)
@@ -288,7 +281,7 @@ func openFileGetLines(fileName string, flag int, closeFile bool) (*os.File, uint
 	return file, lines, nil
 }
 
-// selectAvailableFile 选择一个可用的文件
+// 选择一个可用的文件
 func (e *Adapter) selectAvailableFile() error {
 	// 赋值当前日期
 	e.currTime = time.Now()
@@ -335,7 +328,7 @@ func (e *Adapter) selectAvailableFile() error {
 	return errors.New("no available files found")
 }
 
-// deleteTimeoutLogFile 过期日志文件删除
+// 过期日志文件删除
 func (e *Adapter) deleteTimeoutLogFile() {
 	// 获取日志储存文件夹部分
 	logDirPath := filepath.Dir(e.logPath)
@@ -376,7 +369,7 @@ func (e *Adapter) deleteTimeoutLogFile() {
 	}
 }
 
-// fileSplit 日志文件是否需要分割
+// 日志文件是否需要分割
 func (e *Adapter) fileSplit() bool {
 	// 获取当前时间
 	currTime := time.Now()
@@ -406,7 +399,7 @@ func (e *Adapter) fileSplit() bool {
 	return false
 }
 
-// writeFile 写入日志到文件中
+// 写入日志到文件中
 func (e *Adapter) writeFile() {
 	// 函数结束时的操作
 	defer func() {
@@ -452,7 +445,7 @@ func (e *Adapter) writeFile() {
 	e.listenBufioWrite(file, writer)
 }
 
-// listenBufioWrite 监听日志并通过bufio写入
+// 监听日志并通过bufio写入
 func (e *Adapter) listenBufioWrite(file *os.File, writer *bufio.Writer) {
 	// 计算距离第二天凌晨0点还有多少时间
 	tmpTime := e.currTime.AddDate(0, 0, 1)

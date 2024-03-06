@@ -13,8 +13,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/bearki/belog/v2/level"
-	"github.com/bearki/belog/v2/logger"
+	"github.com/bearki/belog/v3/logger"
 )
 
 // 控制台字体颜色字节表
@@ -35,20 +34,20 @@ var (
 	colorResetBytes = [...]byte{27, 91, 48, 109}
 )
 
-// getLevelConsoleColorBytes 获取日志级别对应的控制台颜色字节表
-func getLevelConsoleColorBytes(l level.Level) []byte {
-	switch l {
-	case level.Trace: // 通知级别(灰色)
+// 获取日志级别对应的控制台颜色字节表
+func getLevelConsoleColorBytes(level logger.Level) []byte {
+	switch level {
+	case logger.Trace: // 通知级别(灰色)
 		return colorGrayStartBytes[:]
-	case level.Debug: // 调试级别(蓝色)
+	case logger.Debug: // 调试级别(蓝色)
 		return colorBlueStartBytes[:]
-	case level.Info: // 普通级别(绿色)
+	case logger.Info: // 普通级别(绿色)
 		return colorGreenStartBytes[:]
-	case level.Warn: // 警告级别(黄色)
+	case logger.Warn: // 警告级别(黄色)
 		return colorYellowStartBytes[:]
-	case level.Error: // 错误级别(红色)
+	case logger.Error: // 错误级别(红色)
 		return colorRedStartBytes[:]
-	case level.Fatal: // 紧急级别(洋红色)
+	case logger.Fatal: // 紧急级别(洋红色)
 		return colorMagentaStartBytes[:]
 	default:
 		return nil
@@ -69,29 +68,33 @@ type Adapter struct {
 }
 
 // New 创建控制台日志适配器
-func New(op Option) logger.Adapter {
+//
+//	@param	opt	适配器参数
+//	@return	适配器实例
+func New(opt Option) logger.Adapter {
 	adapter := &Adapter{
-		disabledBuffer: op.DisabledBuffer,
-		disabledColor:  op.DisabledColor,
+		disabledBuffer: opt.DisabledBuffer,
+		disabledColor:  opt.DisabledColor,
 	}
-	if !op.DisabledBuffer {
+	if !opt.DisabledBuffer {
 		adapter.write = bufio.NewWriter(os.Stdout)
 	}
 	return adapter
 }
 
 // Name 用于获取适配器名称
-// 注意：请确保适配器名称不与其他适配器名称冲突
+//
+//	注意：请确保适配器名称不与其他适配器名称冲突
 func (e *Adapter) Name() string {
 	return "belog-console-adapter"
 }
 
 // Print 普通日志打印方法
 //
-//	@var logTime 日记记录时间
-//	@var level 日志级别
-//	@var content 日志内容
-func (e *Adapter) Print(_ time.Time, level level.Level, content []byte) {
+//	@param	logTime	日记记录时间
+//	@param	level	日志级别
+//	@param	content	日志内容
+func (e *Adapter) Print(_ time.Time, level logger.Level, content []byte) {
 	// 是否禁用颜色
 	if !e.disabledColor {
 		oldBytes := []byte{'[', level.Byte(), ']'}
@@ -125,13 +128,13 @@ func (e *Adapter) Print(_ time.Time, level level.Level, content []byte) {
 
 // PrintStack 调用栈日志打印方法
 //
-//	@var logTime 日记记录时间
-//	@var level 日志级别
-//	@var content 日志内容
-//	@var fileName 日志记录调用文件路径
-//	@var lineNo 日志记录调用文件行号
-//	@var methodName 日志记录调用函数名
-func (e *Adapter) PrintStack(_ time.Time, level level.Level, content []byte, _ string, _ int, _ string) {
+//	@param	logTime		日记记录时间
+//	@param	level		日志级别
+//	@param	content		日志内容
+//	@param	fileName	日志记录调用文件路径
+//	@param	lineNo		日志记录调用文件行号
+//	@param	methodName	日志记录调用函数名
+func (e *Adapter) PrintStack(_ time.Time, level logger.Level, content []byte, _ string, _ int, _ string) {
 	// 是否禁用颜色
 	if !e.disabledColor {
 		oldBytes := []byte{'[', level.Byte(), ']'}
@@ -164,8 +167,8 @@ func (e *Adapter) PrintStack(_ time.Time, level level.Level, content []byte, _ s
 }
 
 // Flush 日志缓存刷新
-// 用于日志缓冲区刷新
-// 接收到该通知后需要立即将缓冲区中的日志持久化
+//
+//	注意：用于日志缓冲区刷新，接收到该通知后需要立即将缓冲区中的日志持久化
 func (e *Adapter) Flush() {
 	if e.write != nil {
 		_ = e.write.Flush()

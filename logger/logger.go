@@ -9,72 +9,68 @@ package logger
 
 import (
 	"errors"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/bearki/belog/v2/internal/pool"
-	"github.com/bearki/belog/v2/level"
+	"github.com/bearki/belog/v3/pkg/pool"
 )
 
-const (
-	// 需要跳过的最少调用栈层数
-	//
-	// 该值由belog内部自定义，外部无需关心
-	stackBaseSkip uint = 4
-)
+// 需要跳过的最少调用栈层数
+//
+//	该值由belog内部自定义，外部无需关心
+const stackBaseSkip uint = 4
 
-var (
-	// 日志字节流对象池
-	logBytesPool = pool.NewBytesPool(100, 0, 1024)
-)
+// 日志字节流对象池
+var logBytesPool = pool.NewBytesPool(100, 0, 1024)
 
-// belog 标准记录器
+// 标准记录器
 type belog struct {
-	//
-	// 缓存映射配置
-	//
+	minLevel          Level              // 需要记录的最小日志级别
+	adaptersRWMutex   sync.RWMutex       // 适配器配置读写锁
+	adapters          map[string]Adapter // 适配器缓存映射
+	encoder           Encoder            // 编码器
+	stackSkip         uint               // 需要跳过的调用栈层数
+	enabledStackPrint bool               // 是否打印调用栈
+}
 
-	levelMapRWMutex sync.RWMutex             // 日志级别配置读写锁
-	levelMap        map[level.Level]struct{} // 需要记录的日志级别字符映射
-	adaptersRWMutex sync.RWMutex             // 适配器配置读写锁
-	adapters        map[string]Adapter       // 适配器缓存映射
+// 获取调用栈信息
+//
+//	@param	skip	需要跳过的调用栈数量
+//	@return	文件名字节切片
+//	@return	行号
+//	@return	函数名
+func getCallStack(skip uint) (fn string, ln int, mn string) {
+	// 获取调用栈信息
+	pc, fn, ln, _ := runtime.Caller(int(skip))
 
-	//
-	// 编码器配置
-	//
+	// 获取函数名字节切片
+	if funcForPC := runtime.FuncForPC(pc); funcForPC != nil {
+		mn = funcForPC.Name()
+	}
 
-	encoder Encoder // 编码器
-
-	//
-	// 功能配置
-	//
-
-	stackSkip         uint // 需要跳过的调用栈层数
-	enabledStackPrint bool // 是否打印调用栈
+	// OK
+	return
 }
 
 // New 初始化一个日志记录器实例
 //
-//	@var adapter 日志适配器
-//	@return 日志记录器实例
+//	@param	adapter	日志适配器
+//	@return	日志记录器实例
 func New(option Option, adapter ...Adapter) (Logger, error) {
-	// 获取有效参数
-	option = checkOptionValid(option)
+	// 检查参数
+	if option.Encoder == nil {
+		return nil, errors.New("the log encoder field cannot be empty")
+	}
 
 	// 初始化日志记录器对象
 	bl := &belog{
-		encoder:           option.Encoder, // 初始化编码器
-		stackSkip:         stackBaseSkip,  // 初始为默认最小跳过层数
-		levelMap:          nil,
+		minLevel:          Trace, // 默认最低级别
+		encoder:           option.Encoder,
+		stackSkip:         stackBaseSkip, // 初始为默认最小跳过层数
 		enabledStackPrint: option.EnabledStackPrint,
 	}
-
-	// 默认开启全部级别的日志记录
-	bl.SetLevel(
-		level.Trace, level.Debug, level.Info,
-		level.Warn, level.Error, level.Fatal,
-	)
 
 	// 初始化适配器
 	for _, v := range adapter {
@@ -92,8 +88,8 @@ func New(option Option, adapter ...Adapter) (Logger, error) {
 
 // SetAdapter 设置日志记录适配器
 //
-//	@var adapter 适配器实例
-//	@return error 错误信息
+//	@param	adapter	适配器实例
+//	@return	异常信息
 func (b *belog) SetAdapter(adapter Adapter) error {
 	// 适配器是否为空
 	if adapter == nil {
@@ -120,59 +116,22 @@ func (b *belog) SetAdapter(adapter Adapter) error {
 	return nil
 }
 
-// levelIsExist 判断日志级别是否在缓存中
-func (b *belog) levelIsExist(l level.Level) bool {
-	// 加个读锁
-	b.levelMapRWMutex.RLock()
-
-	// 是否为空
-	if b.levelMap == nil {
-		return false
-	}
-
-	// 检查
-	_, ok := b.levelMap[l]
-
-	// 释放读锁
-	b.levelMapRWMutex.RUnlock()
-
-	// 返回结果
-	return ok
-}
-
 // SetLevel 设置日志记录保存级别
 //
-//	@var val 日志记录级别（会覆盖上一次的级别配置）
-func (b *belog) SetLevel(ls ...level.Level) {
-	// 加个写锁
-	b.levelMapRWMutex.Lock()
-
-	// 置空，用于覆盖后续输入的级别
-	b.levelMap = nil
-	// 初始化一下
-	b.levelMap = make(map[level.Level]struct{})
-
-	// 遍历输入的级别
-	for _, l := range ls {
-		b.levelMap[l] = struct{}{}
-	}
-
-	// 释放写锁
-	b.levelMapRWMutex.Unlock()
+//	@param	level	日志最小记录级别
+func (b *belog) SetLevel(level Level) {
+	// 赋值最小记录级别
+	b.minLevel = level
 }
 
 // SetSkip 配置需要向上捕获的函数栈层数
 //
-//	@var skip 需要跳过的函数栈层数
-//	@return 日志记录器实例
+//	@param	skip	需要跳过的函数栈层数
 func (b *belog) SetSkip(skip uint) {
 	b.stackSkip = stackBaseSkip + skip
 }
 
 // Flush 日志缓存刷新
-// 用于日志缓冲区刷新，
-// 建议在程序正常退出时调用一次日志刷新，
-// 以保证日志能完整的持久化
 func (b *belog) Flush() {
 	// 协程等待组
 	var wg sync.WaitGroup
@@ -188,8 +147,8 @@ func (b *belog) Flush() {
 	wg.Wait()
 }
 
-// adapterPrint 筛选合适的适配器
-func (b *belog) adapterPrint(t time.Time, l level.Level, c []byte) {
+// 筛选合适的适配器
+func (b *belog) adapterPrint(t time.Time, l Level, c []byte) {
 	// 是否为单适配器输出
 	if len(b.adapters) <= 1 {
 		// 单适配器输出
@@ -200,8 +159,8 @@ func (b *belog) adapterPrint(t time.Time, l level.Level, c []byte) {
 	b.multipleAdapterPrint(t, l, c)
 }
 
-// singleAdapterPrint 单适配器输出
-func (b *belog) singleAdapterPrint(t time.Time, l level.Level, c []byte) {
+// 单适配器输出
+func (b *belog) singleAdapterPrint(t time.Time, l Level, c []byte) {
 	// 加个读锁
 	b.adaptersRWMutex.RLock()
 
@@ -219,8 +178,8 @@ func (b *belog) singleAdapterPrint(t time.Time, l level.Level, c []byte) {
 	b.adaptersRWMutex.RUnlock()
 }
 
-// multipleAdapterPrint 多适配器输出
-func (b *belog) multipleAdapterPrint(t time.Time, l level.Level, c []byte) {
+// 多适配器输出
+func (b *belog) multipleAdapterPrint(t time.Time, l Level, c []byte) {
 	// 加个读锁
 	b.adaptersRWMutex.RLock()
 
@@ -248,8 +207,8 @@ func (b *belog) multipleAdapterPrint(t time.Time, l level.Level, c []byte) {
 	b.adaptersRWMutex.RUnlock()
 }
 
-// filterAdapterPrint 筛选合适的调用栈适配器
-func (b *belog) adapterPrintStack(t time.Time, l level.Level, c []byte, fn string, ln int, mn string) {
+// 筛选合适的调用栈适配器
+func (b *belog) adapterPrintStack(t time.Time, l Level, c []byte, fn string, ln int, mn string) {
 	// 是否为单适配器输出
 	if len(b.adapters) <= 1 {
 		// 单适配器输出
@@ -260,8 +219,8 @@ func (b *belog) adapterPrintStack(t time.Time, l level.Level, c []byte, fn strin
 	b.multipleAdapterPrintStack(t, l, c, fn, ln, mn)
 }
 
-// singleAdapterPrintStack 单适配器输出调用栈
-func (b *belog) singleAdapterPrintStack(t time.Time, l level.Level, c []byte, fn string, ln int, mn string) {
+// 单适配器输出调用栈
+func (b *belog) singleAdapterPrintStack(t time.Time, l Level, c []byte, fn string, ln int, mn string) {
 	// 加个读锁
 	b.adaptersRWMutex.RLock()
 
@@ -279,8 +238,8 @@ func (b *belog) singleAdapterPrintStack(t time.Time, l level.Level, c []byte, fn
 	b.adaptersRWMutex.RUnlock()
 }
 
-// multipleAdapterPrintStack 多适配器输出调用栈
-func (b *belog) multipleAdapterPrintStack(t time.Time, l level.Level, c []byte, fn string, ln int, mn string) {
+// 多适配器输出调用栈
+func (b *belog) multipleAdapterPrintStack(t time.Time, l Level, c []byte, fn string, ln int, mn string) {
 	// 加个读锁
 	b.adaptersRWMutex.RLock()
 

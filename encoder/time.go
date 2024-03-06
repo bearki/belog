@@ -56,31 +56,29 @@ func appendTimeValue(isJson bool, dst []byte, t time.Time, format string) []byte
 	}
 }
 
-// appendTime 追加行格式的时间
+// 追加行格式的时间
 //
-//	@var dst 目标切片
-//	@var key 时间的键名
-//	@var t 实际时间
-//	@var format 序列化格式（与time.Format保持一致）
-//	@return 序列化后的行格式时间字符串
+//	@param	dst		目标切片
+//	@param	key		时间的键名
+//	@param	t		实际时间
+//	@param	format	序列化格式（与time.Format保持一致）
+//	@return	序列化后的行格式时间字符串
 //
-// 返回示例，反引号内为实际内容:
-// `2006/01/02 15:04:05.000`
+// 返回示例: 2006/01/02 15:04:05.000
 func appendTime(dst []byte, t time.Time, format string) []byte {
 	// 追加时间值
 	return appendTimeValue(false, dst, t, format)
 }
 
-// appendTimeJSON 追加JSON格式的时间
+// 追加JSON格式的时间
 //
-//	@var dst 目标切片
-//	@var key 时间的JSON键名
-//	@var t 实际时间
-//	@var format 序列化格式（与time.Format保持一致）
-//	@return 序列化后的JSON格式时间字符串
+//	@param	dst		目标切片
+//	@param	key		时间的JSON键名
+//	@param	t		实际时间
+//	@param	format	序列化格式（与time.Format保持一致）
+//	@return	序列化后的JSON格式时间字符串
 //
-// 返回示例，反引号内为实际内容:
-// `"time": "2006/01/02 15:04:05.000"` || `"time": 123456789000`
+// 返回示例: "time": "2006/01/02 15:04:05.000"` || `"time": 123456789000
 func appendTimeJSON(dst []byte, key string, t time.Time, format string) []byte {
 	// 拼接键名
 	dst = append(dst, '"')

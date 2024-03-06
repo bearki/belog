@@ -10,9 +10,7 @@ package logger
 import (
 	"time"
 
-	"github.com/bearki/belog/v2/field"
-	"github.com/bearki/belog/v2/internal/encoder"
-	"github.com/bearki/belog/v2/level"
+	"github.com/bearki/belog/v3/field"
 )
 
 // StandardBelog 标准记录器
@@ -20,14 +18,14 @@ type StandardBelog struct {
 	*belog
 }
 
-// format 序列化格式
-func (s *StandardBelog) format(t time.Time, l level.Level, msg string, val ...field.Field) {
+// 序列化格式
+func (s *StandardBelog) format(t time.Time, l Level, msg string, val ...field.Field) {
 	// 从对象池中获取一个日志字节流对象
 	dst := logBytesPool.Get()
 
 	// 是否需要调用栈
 	if s.enabledStackPrint {
-		fn, ln, mn := encoder.GetCallStack(s.stackSkip)
+		fn, ln, mn := getCallStack(s.stackSkip)
 		dst = s.encoder.EncodeStack(dst, t, l, fn, ln, mn, msg, val...)
 		s.adapterPrintStack(t, l, dst, fn, ln, mn)
 	} else {
@@ -40,10 +38,10 @@ func (s *StandardBelog) format(t time.Time, l level.Level, msg string, val ...fi
 	logBytesPool.Put(dst)
 }
 
-// check 高性能日志前置判断和序列化
-func (s *StandardBelog) check(l level.Level, msg string, val ...field.Field) {
+// 高性能日志前置判断和序列化
+func (s *StandardBelog) check(l Level, msg string, val ...field.Field) {
 	// 判断当前级别日志是否需要记录
-	if !s.levelIsExist(l) {
+	if l < s.minLevel {
 		return
 	}
 
@@ -60,32 +58,32 @@ func (s *StandardBelog) check(l level.Level, msg string, val ...field.Field) {
 
 // Trace 通知级别的日志（高性能序列化）
 func (s *StandardBelog) Trace(msg string, val ...field.Field) {
-	s.check(level.Trace, msg, val...)
+	s.check(Trace, msg, val...)
 }
 
 // Debug 调试级别的日志（高性能序列化）
 func (s *StandardBelog) Debug(msg string, val ...field.Field) {
-	s.check(level.Debug, msg, val...)
+	s.check(Debug, msg, val...)
 }
 
 // Info 普通级别的日志（高性能序列化）
 func (s *StandardBelog) Info(msg string, val ...field.Field) {
-	s.check(level.Info, msg, val...)
+	s.check(Info, msg, val...)
 }
 
 // Warn 警告级别的日志（高性能序列化）
 func (s *StandardBelog) Warn(msg string, val ...field.Field) {
-	s.check(level.Warn, msg, val...)
+	s.check(Warn, msg, val...)
 }
 
 // Error 错误级别的日志（高性能序列化）
 func (s *StandardBelog) Error(msg string, val ...field.Field) {
-	s.check(level.Error, msg, val...)
+	s.check(Error, msg, val...)
 }
 
 // Fatal 致命级别的日志（高性能序列化）
 func (s *StandardBelog) Fatal(msg string, val ...field.Field) {
-	s.check(level.Fatal, msg, val...)
+	s.check(Fatal, msg, val...)
 }
 
 // GetSugarLogger 获取语法糖记录器

@@ -5,16 +5,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bearki/belog/v2"
-	"github.com/bearki/belog/v2/adapter/discard"
-	"github.com/bearki/belog/v2/field"
-	"github.com/bearki/belog/v2/logger"
+	"github.com/bearki/belog/v3"
+	"github.com/bearki/belog/v3/adapter/discard"
+	"github.com/bearki/belog/v3/field"
+	"github.com/bearki/belog/v3/logger"
 )
 
 // BenchmarkBelogLoggerFormatStatic 测试belog标准记录器序列化静态字符串
 func BenchmarkBelogLoggerFormatStatic(b *testing.B) {
 	// 初始化一个实例(无输出)
-	l, err := belog.New(logger.DefaultOption, discard.New())
+	l, err := belog.New(logger.Option{}, discard.New())
 	if err != nil {
 		fmt.Printf("belog logger create failed, %s\r\n", err)
 		return
@@ -33,7 +33,7 @@ func BenchmarkBelogLoggerFormatStatic(b *testing.B) {
 // BenchmarkBelogLoggerFormatFiveFields 测试belog标准记录器序列化5个字段
 func BenchmarkBelogLoggerFormatFiveFields(b *testing.B) {
 	// 初始化一个实例(无输出)
-	l, err := belog.New(logger.DefaultOption, discard.New())
+	l, err := belog.New(logger.Option{}, discard.New())
 	if err != nil {
 		fmt.Printf("belog logger create failed, %s\r\n", err)
 		return
@@ -63,7 +63,7 @@ func BenchmarkBelogLoggerFormatFiveFields(b *testing.B) {
 // BenchmarkBelogLoggerFormatTenFields 测试belog标准记录器序列化10个字段
 func BenchmarkBelogLoggerFormatTenFields(b *testing.B) {
 	// 初始化一个实例(无输出)
-	l, err := belog.New(logger.DefaultOption, discard.New())
+	l, err := belog.New(logger.Option{}, discard.New())
 	if err != nil {
 		fmt.Printf("belog logger create failed, %s\r\n", err)
 		return
@@ -98,7 +98,7 @@ func BenchmarkBelogLoggerFormatTenFields(b *testing.B) {
 // BenchmarkBelogLoggerFormatSlice 测试belog标准记录器序列化切片
 func BenchmarkBelogLoggerFormatSlice(b *testing.B) {
 	// 初始化一个实例(无输出)
-	l, err := belog.New(logger.DefaultOption, discard.New())
+	l, err := belog.New(logger.Option{}, discard.New())
 	if err != nil {
 		fmt.Printf("belog logger create failed, %s\r\n", err)
 		return
@@ -120,7 +120,7 @@ func BenchmarkBelogLoggerFormatSlice(b *testing.B) {
 // BenchmarkBelogLoggerFormatInterface 测试belog标准记录器序列化反射类型
 func BenchmarkBelogLoggerFormatInterface(b *testing.B) {
 	// 初始化一个实例(无输出)
-	l, err := belog.New(logger.DefaultOption, discard.New())
+	l, err := belog.New(logger.Option{}, discard.New())
 	if err != nil {
 		fmt.Printf("belog logger create failed, %s\r\n", err)
 		return

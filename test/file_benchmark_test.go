@@ -3,10 +3,11 @@ package test
 import (
 	"testing"
 
-	"github.com/bearki/belog/v2"
-	"github.com/bearki/belog/v2/adapter/file"
-	"github.com/bearki/belog/v2/field"
-	"github.com/bearki/belog/v2/logger"
+	"github.com/bearki/belog/v3"
+	"github.com/bearki/belog/v3/adapter/file"
+	"github.com/bearki/belog/v3/encoder"
+	"github.com/bearki/belog/v3/field"
+	"github.com/bearki/belog/v3/logger"
 )
 
 // BenchmarkBelogLoggerFileWrite 测试belog标准记录器文件写入
@@ -27,7 +28,7 @@ func BenchmarkBelogLoggerFileWrite(b *testing.B) {
 	// 配置日志记录器参数
 	opt := logger.Option{
 		EnabledStackPrint: true,
-		Encoder:           logger.NewJsonEncoder(logger.DefaultJsonOption),
+		Encoder:           encoder.NewJsonEncoder(encoder.DefaultJsonOption),
 	}
 
 	// 初始化一个实例(可实例化任意适配器)

@@ -1,3 +1,3 @@
-module github.com/bearki/belog/v2
+module github.com/bearki/belog/v3
 
 go 1.16
